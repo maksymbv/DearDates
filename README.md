@@ -1,86 +1,58 @@
-# DearDates 🎁
+# Dear Dates 🎁
 
-Приложение для хранения дней рождения и идей подарков. Работает полностью оффлайн. Позволяет добавлять карточки людей, их даты рождения, заметки и подарки, которые дарил или планируешь подарить. Приложение напоминает о приближающихся днях рождения.
+An app for storing birthdays and gift ideas. Fully offline application.
 
-## Особенности
+## Features
 
-- 📱 Полностью оффлайн - все данные хранятся локально
-- 🎂 Отслеживание ближайших дней рождения
-- 🎁 Управление идеями подарков
-- ✅ Отметка подаренных подарков
-- 🔔 Напоминания о приближающихся днях рождения
-- 💾 SQLite для локального хранения данных
-- 🎨 Современный и чистый интерфейс с NativeWind
+- 📱 Fully offline - all data is stored locally
+- 🎂 Track upcoming birthdays
+- 🎁 Manage gift ideas
+- ✅ Mark gifts as given
+- 💾 SharedPreferences for local data storage
+- 🎨 Modern Material Design 3 interface
+- ✨ Auto-save on input
 
-## Технологии
+## Technologies
 
-- **Expo** (React Native)
-- **Expo Router** - для навигации
-- **SQLite** (через Expo SQLite) - для хранения данных
-- **Zustand** - для управления состоянием
-- **NativeWind** (Tailwind для React Native) - для стилей
-- **Expo Notifications** - для напоминаний
+- **Flutter** - main framework
+- **SharedPreferences** - for local storage (built-in AsyncStorage equivalent)
+- **Dismissible** - built-in widget for swipe and delete
+- **Material Design 3** - modern design out of the box
+- **Intl** - for date handling
 
-## Установка
+## Built-in Flutter Features Used
 
-1. Установите зависимости:
+✅ **Navigation** - built-in Navigator (no third-party libraries)
+✅ **Gestures** - built-in Dismissible for swipe
+✅ **UI Components** - Material Design components
+✅ **Animations** - built-in Flutter animations
+✅ **Safe Area** - built-in SafeArea widget
+✅ **Date Handling** - built-in DateTime + intl
+
+## Installing Dependencies
+
 ```bash
-npm install
+flutter pub get
 ```
 
-2. Запустите приложение:
+## Running
+
 ```bash
-npm start
+flutter run
 ```
 
-Затем выберите платформу (iOS, Android или Web).
+## Functionality
 
-## Функционал MVP (версия 0.1)
+- ✅ Screen with list of upcoming birthdays
+- ✅ Add new profile (name, birthday, note)
+- ✅ Editable gift ideas (auto-save)
+- ✅ Mark gifts as given
+- ✅ Swipe to delete gifts
+- ✅ Local data storage (SharedPreferences)
 
-- ✅ Экран со списком ближайших дней рождения
-- ✅ Добавление нового профиля (имя, дата рождения, заметка)
-- ✅ Добавление идеи подарка к профилю
-- ✅ Отметка подаренных подарков
-- ✅ Локальное хранение данных (SQLite)
-- ✅ Напоминания о днях рождения (Expo Notifications)
-- ✅ Компоненты карточек (ProfileCard, GiftCard)
-- ✅ Чистый интерфейс с NativeWind
+## Implementation Details
 
-## Структура проекта
-
-```
-DearDates/
-├── app/                  # Expo Router экраны
-│   ├── _layout.tsx      # Корневой layout
-│   ├── index.tsx        # Главный экран
-│   ├── add-profile.tsx  # Добавление профиля
-│   └── profile/[id].tsx # Детали профиля
-├── components/           # React компоненты
-│   ├── ProfileCard.tsx
-│   ├── GiftCard.tsx
-│   └── EmptyState.tsx
-├── db/                  # База данных
-│   └── database.ts      # SQLite функции
-├── store/               # Zustand store
-│   └── useStore.ts
-└── utils/               # Утилиты
-    ├── dates.ts         # Работа с датами
-    └── notifications.ts # Уведомления
-```
-
-## Использование
-
-1. **Добавление профиля**: Нажмите кнопку "+" на главном экране
-2. **Просмотр профиля**: Нажмите на карточку профиля
-3. **Добавление подарка**: Откройте профиль и нажмите "+ Добавить"
-4. **Отметка подарка**: Нажмите на чекбокс рядом с подарком
-5. **Редактирование**: Нажмите "Редактировать" в профиле
-
-## Разработка
-
-Проект использует TypeScript для типобезопасности. Все данные хранятся локально в SQLite базе данных. Уведомления настраиваются автоматически при добавлении профиля.
-
-## Лицензия
-
-MIT
-
+1. **Auto-save**: When entering gift idea text, saving happens automatically 1 second after input stops
+2. **Swipe to delete**: Uses built-in `Dismissible` widget
+3. **Minimal dependencies**: Only necessary libraries are used (shared_preferences, intl)
+4. **Built-in components**: Maximum use of Flutter's out-of-the-box capabilities
