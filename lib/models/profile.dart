@@ -6,6 +6,8 @@ class Profile {
   final DateTime createdAt;
   final List<Gift> gifts;
   final int avatarColor; // Цвет аватара (пастельный)
+  final String? photoPath; // Путь к фото профиля
+  final String? groupId; // ID группы, к которой принадлежит профиль
 
   Profile({
     required this.id,
@@ -15,6 +17,8 @@ class Profile {
     required this.createdAt,
     this.gifts = const [],
     required this.avatarColor,
+    this.photoPath,
+    this.groupId,
   });
 
   Map<String, dynamic> toJson() {
@@ -26,6 +30,8 @@ class Profile {
       'createdAt': createdAt.toIso8601String(),
       'gifts': gifts.map((g) => g.toJson()).toList(),
       'avatarColor': avatarColor,
+      'photoPath': photoPath,
+      'groupId': groupId,
     };
   }
 
@@ -41,6 +47,8 @@ class Profile {
               .toList() ??
           [],
       avatarColor: json['avatarColor'] as int? ?? 0xFFD68A9E, // По умолчанию розовый для старых профилей
+      photoPath: json['photoPath'] as String?,
+      groupId: json['groupId'] as String?,
     );
   }
 
@@ -52,6 +60,8 @@ class Profile {
     DateTime? createdAt,
     List<Gift>? gifts,
     int? avatarColor,
+    String? photoPath,
+    String? groupId,
   }) {
     return Profile(
       id: id ?? this.id,
@@ -61,6 +71,8 @@ class Profile {
       createdAt: createdAt ?? this.createdAt,
       gifts: gifts ?? this.gifts,
       avatarColor: avatarColor ?? this.avatarColor,
+      photoPath: photoPath ?? this.photoPath,
+      groupId: groupId ?? this.groupId,
     );
   }
 }

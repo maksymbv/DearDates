@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../services/notification_service.dart';
 import '../services/theme_service.dart';
+import '../theme/app_text_styles.dart';
+import '../theme/theme_helper.dart';
+import '../localization/app_localizations.dart';
 
 class NotificationSettingsScreen extends StatefulWidget {
   const NotificationSettingsScreen({super.key});
@@ -16,7 +19,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
   List<int> _reminderDays = [];
   bool _isLoading = true;
 
-  final List<int> _availableDays = [1, 2, 3, 5, 7, 10, 14, 21, 30];
+  final List<int> _availableDays = [1, 3, 7, 14, 30];
   
   Color get _primaryColor => Color(_themeService.primaryColor);
 
@@ -50,19 +53,27 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+    
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Настройки уведомлений'),
+        title: Text(
+          localizations.notificationSettings,
+          style: AppTextStyles.heading2(context),
+        ),
         centerTitle: true,
         titleSpacing: 0,
         leading: Padding(
           padding: const EdgeInsets.only(left: 20),
             child: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.grey),
+              icon: Icon(LucideIcons.arrowLeft, color: context.iconColor, size: 24),
               onPressed: () => Navigator.pop(context),
               padding: EdgeInsets.zero,
               mouseCursor: SystemMouseCursors.basic,
               tooltip: '',
+              splashColor: Colors.transparent,
+              highlightColor: Colors.transparent,
+              hoverColor: Colors.transparent,
             ),
         ),
       ),
@@ -74,20 +85,13 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Напоминания за сколько дней',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey[800],
-                    ),
+                    localizations.reminderDaysTitle,
+                    style: AppTextStyles.heading2(context).copyWith(fontSize: 18),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Выберите, за сколько дней до дня рождения вы хотите получать уведомления',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
+                    localizations.reminderDaysDescription,
+                    style: AppTextStyles.secondary(context).copyWith(fontSize: 14),
                   ),
                   const SizedBox(height: 24),
                   ..._availableDays.map((day) {
@@ -95,23 +99,21 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                     return Container(
                       margin: const EdgeInsets.only(bottom: 12),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: Theme.of(context).cardColor,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
                           color: isSelected
                               ? _primaryColor
-                              : Colors.grey[300]!,
+                              : Theme.of(context).dividerColor,
                           width: isSelected ? 2 : 1,
                         ),
                       ),
                       child: ListTile(
                         title: Text(
-                          _getDayText(day),
-                          style: TextStyle(
+                          _getDayText(day, localizations),
+                          style: AppTextStyles.body(context).copyWith(
                             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                            color: isSelected
-                                ? _primaryColor
-                                : Colors.grey[800],
+                            color: isSelected ? _primaryColor : context.textColor,
                           ),
                         ),
                         trailing: Checkbox(
@@ -130,24 +132,25 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF5F4F2),
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Theme.of(context).dividerColor,
+                        width: 1,
+                      ),
                     ),
                     child: Row(
                       children: [
                         Icon(
                           LucideIcons.info,
-                          color: Colors.grey[600],
-                          size: 20,
+                          size: 24,
+                          color: context.iconColor,
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            'Вы также будете получать уведомление в сам день рождения',
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey[700],
-                            ),
+                            localizations.birthdayNotificationInfo,
+                            style: AppTextStyles.caption(context),
                           ),
                         ),
                       ],
@@ -159,14 +162,11 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
     );
   }
 
-  String _getDayText(int day) {
+  String _getDayText(int day, AppLocalizations localizations) {
     if (day == 1) {
-      return 'За 1 день';
+      return '${localizations.daysBefore} 1 ${localizations.day}';
     }
-    if (day >= 2 && day <= 4) {
-      return 'За $day дня';
-    }
-    return 'За $day дней';
+    return '${localizations.daysBefore} $day ${localizations.days}';
   }
 }
 

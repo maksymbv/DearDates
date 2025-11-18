@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../services/notification_service.dart';
 import '../services/theme_service.dart';
+import '../localization/app_localizations.dart';
+import '../theme/app_text_styles.dart';
+import '../theme/theme_helper.dart';
 import 'notification_settings_screen.dart';
 import 'theme_settings_screen.dart';
 
@@ -17,6 +20,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final ThemeService _themeService = ThemeService();
   List<int> _reminderDays = [];
   AppTheme _currentTheme = AppTheme.pink;
+  bool _isDarkMode = false;
   bool _isLoading = true;
 
   @override
@@ -36,6 +40,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) {
       setState(() {
         _currentTheme = _themeService.currentTheme;
+        _isDarkMode = _themeService.isDarkMode;
       });
     }
   }
@@ -46,51 +51,84 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _reminderDays = List.from(days);
       _currentTheme = _themeService.currentTheme;
+      _isDarkMode = _themeService.isDarkMode;
       _isLoading = false;
     });
   }
   
   String _getThemeText() {
-    return _currentTheme.displayName;
+    final localizations = AppLocalizations.of(context);
+    if (localizations == null) {
+      final brightness = _isDarkMode ? 'Темная' : 'Светлая';
+      final color = _currentTheme.displayName.toLowerCase();
+      return '$brightness $color';
+    }
+    final brightness = _isDarkMode ? localizations.dark : localizations.light;
+    final color = _currentTheme == AppTheme.pink ? localizations.pink : localizations.blue;
+    return '$brightness $color';
   }
+  
 
   String _getReminderDaysText() {
+    final localizations = AppLocalizations.of(context);
+    if (localizations == null) {
+      if (_reminderDays.isEmpty) {
+        return 'Не выбрано';
+      }
+      _reminderDays.sort();
+      if (_reminderDays.length == 1) {
+        final day = _reminderDays.first;
+        final dayText = day == 1 ? 'день' : (day >= 2 && day <= 4 ? 'дня' : 'дней');
+        return 'За $day $dayText';
+      }
+      final daysList = _reminderDays.map((d) => '$d').join(', ');
+      return 'За $daysList дней';
+    }
+    
     if (_reminderDays.isEmpty) {
-      return 'Не выбрано';
+      return localizations.notSelected;
     }
     _reminderDays.sort();
     if (_reminderDays.length == 1) {
-      return 'За ${_reminderDays.first} ${_getDayText(_reminderDays.first)}';
+      return '${localizations.daysBefore} ${_reminderDays.first} ${_getDayText(_reminderDays.first, localizations)}';
     }
     final daysList = _reminderDays.map((d) => '$d').join(', ');
-    return 'За $daysList дней';
+    return '${localizations.daysBefore} $daysList ${localizations.days}';
   }
 
-  String _getDayText(int day) {
+  String _getDayText(int day, AppLocalizations localizations) {
     if (day == 1) {
-      return 'день';
+      return localizations.day;
     }
     if (day >= 2 && day <= 4) {
-      return 'дня';
+      return localizations.days;
     }
-    return 'дней';
+    return localizations.days;
   }
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context);
+    
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Настройки'),
+        title: Text(
+          localizations.settings,
+          style: AppTextStyles.heading2(context),
+        ),
         centerTitle: true,
         titleSpacing: 0,
         leading: Padding(
           padding: const EdgeInsets.only(left: 20),
             child: IconButton(
-              icon: const Icon(Icons.arrow_back, color: Colors.grey),
+              icon: Icon(LucideIcons.arrowLeft, color: context.iconColor, size: 24),
               onPressed: () => Navigator.pop(context),
               padding: EdgeInsets.zero,
               mouseCursor: SystemMouseCursors.basic,
               tooltip: '',
+              splashColor: Colors.transparent,
+              highlightColor: Colors.transparent,
+              hoverColor: Colors.transparent,
             ),
         ),
       ),
@@ -106,7 +144,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         // Блок уведомлений
                         Container(
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: Theme.of(context).cardColor,
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
@@ -119,28 +157,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           child: ListTile(
                             title: Row(
                               children: [
-                                const Text(
-                                  'Уведомления',
-                                  style: TextStyle(
+                                Text(
+                                  localizations.notifications,
+                                  style: AppTextStyles.body(context).copyWith(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w500,
-                                    color: Color(0xFF2E2E2E),
                                   ),
                                 ),
                                 const Spacer(),
                                 Text(
                                   _getReminderDaysText(),
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.grey[400],
-                                  ),
+                                  style: AppTextStyles.caption(context),
                                 ),
                               ],
-                            ),
-                            trailing: Icon(
-                              LucideIcons.chevronRight,
-                              color: Colors.grey[600],
-                              size: 18,
                             ),
                             onTap: () async {
                               await Navigator.push(
@@ -163,7 +192,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         // Блок темы
                         Container(
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: Theme.of(context).cardColor,
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
@@ -176,28 +205,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           child: ListTile(
                             title: Row(
                               children: [
-                                const Text(
-                                  'Тема',
-                                  style: TextStyle(
+                                Text(
+                                  localizations.theme,
+                                  style: AppTextStyles.body(context).copyWith(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w500,
-                                    color: Color(0xFF2E2E2E),
                                   ),
                                 ),
                                 const Spacer(),
                                 Text(
                                   _getThemeText(),
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: Colors.grey[400],
-                                  ),
+                                  style: AppTextStyles.caption(context),
                                 ),
                               ],
-                            ),
-                            trailing: Icon(
-                              LucideIcons.chevronRight,
-                              color: Colors.grey[600],
-                              size: 18,
                             ),
                             onTap: () async {
                               await Navigator.push(
@@ -230,7 +250,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         'Made by Max Baranov with ',
                         style: TextStyle(
                           fontSize: 12,
-                          color: Colors.grey[500],
+                          color: context.secondaryTextColor.withOpacity(0.6),
                         ),
                       ),
                       Text(

@@ -1,10 +1,13 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import '../models/profile.dart';
-import '../utils/date_utils.dart';
+import '../localization/app_localizations.dart';
 import 'storage_service.dart';
+import 'notification_text_builder.dart';
+import 'birthday_date_helper.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -12,10 +15,10 @@ class NotificationService {
   NotificationService._internal();
 
   final FlutterLocalNotificationsPlugin _notifications = FlutterLocalNotificationsPlugin();
-  final StorageService _storageService = StorageService();
+  final StorageService _storage = StorageService();
   
   // Настройки уведомлений по умолчанию
-  static const List<int> defaultReminderDays = [1, 3, 7];
+  static const List<int> defaultReminderDays = [1, 3, 7, 14, 30];
   
   bool _initialized = false;
 
@@ -80,100 +83,79 @@ class NotificationService {
 
   // Планирование уведомлений для всех профилей
   Future<void> scheduleAllNotifications() async {
-    if (!_initialized) await initialize();
-
-    // Отменяем все существующие уведомления
+    await initialize();
     await cancelAllNotifications();
-
-    final profiles = await _storageService.loadProfiles();
+    final profiles = await _storage.loadProfiles();
     final reminderDays = await getReminderDays();
-
     for (final profile in profiles) {
-      await scheduleProfileNotifications(profile, reminderDays);
+      await scheduleProfile(profile, reminderDays);
     }
   }
 
   // Планирование уведомлений для конкретного профиля
-  Future<void> scheduleProfileNotifications(Profile profile, List<int> reminderDays) async {
-    if (!_initialized) await initialize();
-
-    final nextBirthday = calculateNextBirthday(profile.birthdate);
+  Future<void> scheduleProfile(Profile profile, List<int> reminderDays) async {
+    await initialize();
     
-    // Получаем локальный часовой пояс
-    final local = tz.local;
-    final nowTz = tz.TZDateTime.now(local);
+    final loc = await _createTextBuilder();
+    final birthday = BirthdayDateHelper.nextBirthdayAt10(profile);
+    
+    if (!BirthdayDateHelper.isInFuture(birthday)) return;
 
-    // Конвертируем nextBirthday в TZDateTime с временем 10:00 утра
-    final birthdayTz = tz.TZDateTime(
-      local,
-      nextBirthday.year,
-      nextBirthday.month,
-      nextBirthday.day,
-      10, // 10:00 утра
-      0,
-    );
-
-    // Проверяем, не прошел ли уже день рождения
-    if (birthdayTz.isBefore(nowTz) || birthdayTz.isAtSameMomentAs(nowTz)) {
-      return;
-    }
-
-    // Создаем уведомления для каждого дня напоминания
-    for (final daysBefore in reminderDays) {
-      final notificationDate = birthdayTz.subtract(Duration(days: daysBefore));
-      
-      // Планируем только будущие уведомления
-      if (notificationDate.isAfter(nowTz)) {
-        await _scheduleNotification(
-          id: _getNotificationId(profile.id, daysBefore),
-          title: 'День рождения скоро! 🎂',
-          body: _getNotificationBody(profile.name, daysBefore, nextBirthday),
-          scheduledDate: notificationDate,
-          profileId: profile.id,
+    // 1) Напоминания заранее
+    final birthdayDate = DateTime(birthday.year, birthday.month, birthday.day);
+    for (final days in reminderDays) {
+      final date = birthday.subtract(Duration(days: days));
+      if (BirthdayDateHelper.isInFuture(date)) {
+        await _schedule(
+          id: _id(profile, days),
+          title: loc.titleForReminder(),
+          body: loc.bodyForReminder(profile.name, days, birthdayDate),
+          date: date,
         );
       }
     }
 
-    // Также планируем уведомление в сам день рождения
-    if (birthdayTz.isAfter(nowTz)) {
-      await _scheduleNotification(
-        id: _getNotificationId(profile.id, 0),
-        title: 'Сегодня день рождения! 🎉',
-        body: 'Сегодня день рождения у ${profile.name}!',
-        scheduledDate: birthdayTz,
-        profileId: profile.id,
-      );
-    }
+    // 2) День рождения
+    await _schedule(
+      id: _id(profile, 0),
+      title: loc.titleForBirthday(),
+      body: loc.bodyForBirthday(profile.name),
+      date: birthday,
+    );
+  }
+
+  // Создание NotificationTextBuilder с английской локалью
+  Future<NotificationTextBuilder> _createTextBuilder() async {
+    final localizations = AppLocalizations(Locale('en', 'US'));
+    return NotificationTextBuilder(localizations);
   }
 
   // Планирование одного уведомления
-  Future<void> _scheduleNotification({
+  Future<void> _schedule({
     required int id,
     required String title,
     required String body,
-    required tz.TZDateTime scheduledDate,
-    required String profileId,
+    required tz.TZDateTime date,
   }) async {
-
-    const androidDetails = AndroidNotificationDetails(
-      'birthday_reminders',
-      'Напоминания о днях рождения',
-      channelDescription: 'Уведомления о приближающихся днях рождения',
-      importance: Importance.high,
-      priority: Priority.high,
-      showWhen: true,
-    );
-
-    const darwinDetails = DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-    );
-
-    const details = NotificationDetails(
-      android: androidDetails,
-      iOS: darwinDetails,
-      macOS: darwinDetails,
+    final details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        'birthday_channel',
+        'Birthday reminders',
+        channelDescription: 'Notifications about upcoming birthdays',
+        importance: Importance.high,
+        priority: Priority.high,
+        showWhen: true,
+      ),
+      iOS: const DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      ),
+      macOS: const DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      ),
     );
 
     try {
@@ -181,44 +163,18 @@ class NotificationService {
         id,
         title,
         body,
-        scheduledDate,
+        date,
         details,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
       );
     } catch (e) {
       // Игнорируем ошибки планирования (например, если дата в прошлом)
-      // print('Ошибка планирования уведомления: $e');
     }
   }
 
-  // Получение ID уведомления
-  int _getNotificationId(String profileId, int daysBefore) {
-    // Используем хеш профиля и дней для уникального ID
-    return (profileId.hashCode + daysBefore).abs() % 2147483647;
-  }
-
-  // Формирование текста уведомления
-  String _getNotificationBody(String name, int daysBefore, DateTime birthday) {
-    if (daysBefore == 0) {
-      return 'Сегодня день рождения у $name!';
-    }
-    
-    final daysText = _getDaysText(daysBefore);
-    final birthdayText = formatDate(birthday);
-    return 'Через $daysBefore $daysText день рождения у $name ($birthdayText)';
-  }
-
-  // Получение правильной формы слова "день"
-  String _getDaysText(int days) {
-    if (days % 10 == 1 && days % 100 != 11) {
-      return 'день';
-    }
-    if (days % 10 >= 2 && days % 10 <= 4 && (days % 100 < 10 || days % 100 >= 20)) {
-      return 'дня';
-    }
-    return 'дней';
-  }
+  // Генерация ID уведомления
+  int _id(Profile profile, int days) => Object.hash(profile.id, days);
+  int _idFromString(String profileId, int days) => Object.hash(profileId, days);
 
   // Отмена всех уведомлений
   Future<void> cancelAllNotifications() async {
@@ -228,10 +184,9 @@ class NotificationService {
   // Отмена уведомлений для конкретного профиля
   Future<void> cancelProfileNotifications(String profileId, List<int> reminderDays) async {
     for (final daysBefore in reminderDays) {
-      await _notifications.cancel(_getNotificationId(profileId, daysBefore));
+      await _notifications.cancel(_idFromString(profileId, daysBefore));
     }
     // Отменяем уведомление в день рождения
-    await _notifications.cancel(_getNotificationId(profileId, 0));
+    await _notifications.cancel(_idFromString(profileId, 0));
   }
 }
-

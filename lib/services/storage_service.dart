@@ -1,10 +1,17 @@
 import 'dart:convert';
 import 'dart:math';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/profile.dart';
 import 'notification_service.dart';
+import 'photo_service.dart';
 
 class StorageService {
+  static final StorageService _instance = StorageService._internal();
+  
+  factory StorageService() => _instance;
+  StorageService._internal();
+  
   static const String _profilesKey = 'profiles';
 
   // Генерация случайного пастельного цвета
@@ -77,10 +84,10 @@ class StorageService {
     try {
       final notificationService = NotificationService();
       final reminderDays = await notificationService.getReminderDays();
-      await notificationService.scheduleProfileNotifications(profile, reminderDays);
+      await notificationService.scheduleProfile(profile, reminderDays);
     } catch (e) {
       // Игнорируем ошибки уведомлений, чтобы не блокировать сохранение профиля
-      print('Ошибка при планировании уведомлений: $e');
+      debugPrint('Ошибка при планировании уведомлений: $e');
     }
   }
 
@@ -90,6 +97,13 @@ class StorageService {
     
     if (index != -1) {
       final oldProfile = profiles[index];
+      
+      // Удаляем старое фото, если оно было изменено или удалено
+      if (oldProfile.photoPath != null && oldProfile.photoPath != profile.photoPath) {
+        final photoService = PhotoService();
+        await photoService.deletePhoto(oldProfile.photoPath);
+      }
+      
       profiles[index] = profile;
       await saveProfiles(profiles);
       
@@ -102,16 +116,27 @@ class StorageService {
         await notificationService.cancelProfileNotifications(oldProfile.id, reminderDays);
         
         // Планируем новые уведомления
-        await notificationService.scheduleProfileNotifications(profile, reminderDays);
+        await notificationService.scheduleProfile(profile, reminderDays);
       } catch (e) {
         // Игнорируем ошибки уведомлений, чтобы не блокировать сохранение профиля
-        print('Ошибка при обновлении уведомлений: $e');
+        debugPrint('Ошибка при обновлении уведомлений: $e');
       }
     }
   }
 
   Future<void> deleteProfile(String profileId) async {
     final profiles = await loadProfiles();
+    final profileToDelete = profiles.firstWhere(
+      (p) => p.id == profileId,
+      orElse: () => throw Exception('Profile not found'),
+    );
+    
+    // Удаляем фото профиля, если оно есть
+    if (profileToDelete.photoPath != null) {
+      final photoService = PhotoService();
+      await photoService.deletePhoto(profileToDelete.photoPath);
+    }
+    
     profiles.removeWhere((p) => p.id == profileId);
     await saveProfiles(profiles);
     
