@@ -88,6 +88,7 @@ class _EditableGiftItemState extends State<EditableGiftItem> {
   }
 
   Future<void> _handleDelete() async {
+    if (!context.mounted) return;
     final localizations = AppLocalizations.of(context);
     final confirmed = await showModalBottomSheet<bool>(
       context: context,

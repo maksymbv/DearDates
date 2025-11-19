@@ -51,8 +51,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _loadProfile() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
     final profiles = await _storageService.loadProfiles();
+    
+    if (!mounted) return;
+    
     final profile = profiles.firstWhere(
       (p) => p.id == widget.profileId,
       orElse: () => Profile(
@@ -74,6 +78,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     
     final groups = await _groupService.getAllGroups();
 
+    if (!mounted) return;
     setState(() {
       _profile = profile;
       _groups = groups;
@@ -329,8 +334,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       children: [
                         // Фото
                         Container(
-                          width: 70,
-                          height: 70,
+                          width: 80,
+                          height: 80,
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
                               colors: [
@@ -385,13 +390,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              // Имя
-                              Text(
-                                profile.name,
-                                style: AppTextStyles.heading1(context),
+                              // Имя с бейджиком группы
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      profile.name,
+                                      style: AppTextStyles.heading1(context),
+                                    ),
+                                  ),
+                                  if (profile.groupId != null) ...[
+                                    const SizedBox(width: 8),
+                                    Builder(
+                                      builder: (context) {
+                                        try {
+                                          final groupId = profile.groupId;
+                                          if (groupId != null) {
+                                            final group = _groups.firstWhere((g) => g.id == groupId);
+                                            return Padding(
+                                              padding: const EdgeInsets.only(top: 2),
+                                              child: GroupBadge(
+                                                groupName: group.name,
+                                                primaryColor: _primaryColor,
+                                              ),
+                                            );
+                                          }
+                                          return const SizedBox.shrink();
+                                        } catch (e) {
+                                          return const SizedBox.shrink();
+                                        }
+                                      },
+                                    ),
+                                  ],
+                                ],
                               ),
                               const SizedBox(height: 8),
-                              // Дата и возраст
+                              // Дата рождения
                               Row(
                                 children: [
                                   Icon(
@@ -401,34 +436,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
-                                    '${formatDate(profile.birthdate)} • $age ${_getAgeText(age, AppLocalizations.of(context))}',
+                                    formatDateFull(profile.birthdate),
                                     style: AppTextStyles.secondary(context).copyWith(
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
                                 ],
                               ),
-                              // Группа
-                              if (profile.groupId != null) ...[
-                                const SizedBox(height: 8),
-                                Builder(
-                                  builder: (context) {
-                                    try {
-                                      final groupId = profile.groupId;
-                                      if (groupId != null) {
-                                        final group = _groups.firstWhere((g) => g.id == groupId);
-                                        return GroupBadge(
-                                          groupName: group.name,
-                                          primaryColor: _primaryColor,
-                                        );
-                                      }
-                                      return const SizedBox.shrink();
-                                    } catch (e) {
-                                      return const SizedBox.shrink();
-                                    }
-                                  },
+                              const SizedBox(height: 4),
+                              // Возраст
+                              Text(
+                                '$age ${_getAgeText(age, AppLocalizations.of(context))}',
+                                style: AppTextStyles.secondary(context).copyWith(
+                                  fontWeight: FontWeight.w500,
                                 ),
-                              ],
+                              ),
                             ],
                           ),
                         ),
@@ -582,12 +604,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
-            child: Container(
+            child: ConstrainedBox(
               constraints: const BoxConstraints(
                 minHeight: 48, // Минимальная высота как у карточек
+                maxHeight: 300, // Максимальная высота
               ),
               child: TextField(
                 controller: _giftInputController,
@@ -602,44 +625,47 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   fillColor: Colors.transparent,
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
-                    vertical: 14,
+                    vertical: 12,
                   ),
-                hintText: isEditing 
-                    ? 'Edit gift idea...'
-                    : 'Add gift idea...',
-                hintStyle: TextStyle(
-                  color: Colors.grey[400],
-                  fontSize: 14,
+                  hintText: isEditing 
+                      ? 'Edit gift idea...'
+                      : 'Add gift idea...',
+                  hintStyle: TextStyle(
+                    color: Colors.grey[400],
+                    fontSize: 14,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
+                  ),
                 ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
-                ),
+                textInputAction: TextInputAction.newline,
               ),
-              onSubmitted: (_) => _saveGiftFromInput(),
-              textInputAction: TextInputAction.done,
-            ),
             ),
           ),
           const SizedBox(width: 8),
-          IconButton(
-            icon: Icon(
-              LucideIcons.gift,
-              size: 24,
-              color: _giftInputController.text.trim().isNotEmpty 
-                  ? _primaryColor 
-                  : context.iconColor.withOpacity(0.5),
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: IconButton(
+              icon: Icon(
+                LucideIcons.gift,
+                size: 24,
+                color: _giftInputController.text.trim().isNotEmpty 
+                    ? _primaryColor 
+                    : context.iconColor.withOpacity(0.5),
+              ),
+              onPressed: _saveGiftFromInput,
+              padding: EdgeInsets.only(right: 10),
+              constraints: const BoxConstraints(),
             ),
-            onPressed: _saveGiftFromInput,
-            padding: const EdgeInsets.all(12),
           ),
         ],
       ),
@@ -670,6 +696,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       ),
       confirmDismiss: (_) async {
+        if (!context.mounted) return false;
         final localizations = AppLocalizations.of(context);
         final confirmed = await showModalBottomSheet<bool>(
           context: context,

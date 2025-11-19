@@ -33,6 +33,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final FocusNode _searchFocusNode = FocusNode();
   bool _isSearching = false;
   String? _selectedGroupId; // null означает "Все"
+  bool _isModalOpen = false; // Флаг для предотвращения одновременного открытия модальных окон
   
   @override
   void initState() {
@@ -64,7 +65,7 @@ class _HomeScreenState extends State<HomeScreen> {
       await notificationService.initialize();
       await notificationService.scheduleAllNotifications();
     } catch (e) {
-      // Игнорируем ошибки инициализации уведомлений (например, на macOS может не быть разрешений)
+      // Игнорируем ошибки инициализации уведомлений
       debugPrint('Failed to initialize notifications: $e');
     }
     
@@ -83,9 +84,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _loadProfiles() async {
     try {
+      if (!mounted) return;
       setState(() => _isLoading = true);
       final profiles = await _storageService.loadProfiles();
       final groups = await _groupService.getAllGroups();
+      
+      if (!mounted) return;
       
       // Применяем сортировку по дням до дня рождения
       _sortProfiles(profiles);
@@ -100,6 +104,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _applyFilters();
     } catch (e) {
       debugPrint('Error loading profiles: $e');
+      if (!mounted) return;
       setState(() {
         _profiles = [];
         _filteredProfiles = [];
@@ -110,13 +115,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Получить название группы по ID
   String _getGroupName(String? groupId) {
-    if (groupId == null) return 'Без группы';
+    if (groupId == null) return 'All';
     try {
       return _groups.firstWhere((g) => g.id == groupId).name;
     } catch (e) {
-      // Если группа не найдена (например, была удалена), возвращаем "Без группы"
+      // Если группа не найдена (например, была удалена), возвращаем "All"
       // чтобы бейдж не отображался
-      return 'Без группы';
+      return 'All';
     }
   }
 
@@ -164,6 +169,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Выбор группы для фильтрации
   void _selectGroup(String? groupId) {
+    if (!mounted) return;
     setState(() {
       _selectedGroupId = groupId;
     });
@@ -172,6 +178,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Показать меню группы (редактировать/удалить)
   Future<void> _showGroupMenu(BuildContext context, Group group) async {
+    if (!context.mounted || _isModalOpen) return;
+    _isModalOpen = true;
     final localizations = AppLocalizations.of(context);
     final result = await showModalBottomSheet<String>(
       context: context,
@@ -247,7 +255,13 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
 
-    if (!mounted) return;
+    _isModalOpen = false;
+    if (!mounted || !context.mounted) return;
+    
+    // Небольшая задержка, чтобы предыдущее модальное окно успело закрыться
+    await Future.delayed(const Duration(milliseconds: 200));
+    
+    if (!mounted || !context.mounted) return;
     
     if (result == 'edit') {
       await _showEditGroupDialog(context, group);
@@ -258,7 +272,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Диалог создания группы
   Future<void> _showCreateGroupDialog(BuildContext context) async {
-    if (!mounted) return;
+    if (!mounted || !context.mounted || _isModalOpen) return;
+    _isModalOpen = true;
     
     final localizations = AppLocalizations.of(context);
     final controller = TextEditingController();
@@ -368,6 +383,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
 
+    _isModalOpen = false;
     if (!mounted) {
       controller.dispose();
       return;
@@ -382,7 +398,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Диалог редактирования группы
   Future<void> _showEditGroupDialog(BuildContext context, Group group) async {
-    if (!mounted) return;
+    if (!mounted || !context.mounted) return;
     
     final localizations = AppLocalizations.of(context);
     final controller = TextEditingController(text: group.name);
@@ -487,6 +503,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
 
+    _isModalOpen = false;
     if (!mounted) {
       controller.dispose();
       return;
@@ -524,6 +541,8 @@ class _HomeScreenState extends State<HomeScreen> {
           .replaceAll('{count}', count.toString())
           .replaceAll('{profileText}', profileText);
       
+      if (!context.mounted || _isModalOpen) return;
+      _isModalOpen = true;
       final confirmed = await showModalBottomSheet<bool>(
         context: context,
         backgroundColor: Colors.transparent,
@@ -603,10 +622,11 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
 
+      _isModalOpen = false;
       if (!mounted) return;
       if (confirmed != true) return;
 
-      // Перемещаем профили в "Без группы"
+      // Перемещаем профили в "All"
       for (final profile in profilesInGroup) {
         await _storageService.updateProfile(profile.copyWith(groupId: null));
         if (!mounted) return;
@@ -633,6 +653,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
   void _startSearch() {
+    if (!mounted) return;
     setState(() {
       _isSearching = true;
     });
@@ -644,6 +665,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _stopSearch() {
+    if (!mounted) return;
     setState(() {
       _isSearching = false;
       _searchController.clear();
@@ -826,8 +848,8 @@ class _HomeScreenState extends State<HomeScreen> {
           // Фильтр по группам
           if (!_isLoading && _profiles.isNotEmpty)
             Container(
-              height: 56,
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              height: 48,
+              padding: const EdgeInsets.symmetric(vertical: 4),
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -882,152 +904,137 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           // Основной контент
           Expanded(
-            child: Stack(
-              children: [
-                _isLoading
-                    ? Center(
-                        child: CircularProgressIndicator(
+            child: _isLoading
+                ? Center(
+                    child: CircularProgressIndicator(
+                      color: _primaryColor.withOpacity(0.7),
+                    ),
+                  )
+                : _profiles.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(24),
+                        child: Icon(
+                          LucideIcons.cake,
+                          size: 64,
                           color: _primaryColor.withOpacity(0.7),
                         ),
-                      )
-                    : _profiles.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(24),
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        AppLocalizations.of(context).noProfilesYet,
+                        style: AppTextStyles.heading2(context).copyWith(
+                          fontSize: 20,
+                          color: context.secondaryTextColor,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        AppLocalizations.of(context).addFirstProfile,
+                        style: AppTextStyles.caption(context).copyWith(
+                          fontSize: 15,
+                          color: context.secondaryTextColor.withOpacity(0.6),
+                        ),
+                      ),
+                    ],
+                  ),
+                )
+              : Column(
+                  children: [
+                    // Индикатор результатов поиска
+                    ValueListenableBuilder<TextEditingValue>(
+                      valueListenable: _searchController,
+                      builder: (context, value, child) {
+                        if (_isSearching && value.text.isNotEmpty) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 8,
+                            ),
                             decoration: BoxDecoration(
                               color: Theme.of(context).cardColor,
-                              shape: BoxShape.circle,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: _primaryColor.withOpacity(0.1),
-                                  blurRadius: 20,
-                                  spreadRadius: 5,
+                              border: Border(
+                                bottom: BorderSide(
+                                  color: Theme.of(context).dividerColor,
+                                  width: 1,
+                                ),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  LucideIcons.search,
+                                  size: 16,
+                                  color: context.textColor,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _filteredProfiles.isEmpty
+                                      ? AppLocalizations.of(context).nothingFound
+                                      : '${AppLocalizations.of(context).found}: ${_filteredProfiles.length}',
+                                  style: AppTextStyles.caption(context).copyWith(
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ],
                             ),
-                            child: Icon(
-                              LucideIcons.cake,
-                              size: 64,
-                              color: _primaryColor.withOpacity(0.7),
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                          Text(
-                            AppLocalizations.of(context).noProfilesYet,
-                            style: AppTextStyles.heading2(context).copyWith(
-                              fontSize: 20,
-                              color: context.secondaryTextColor,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            AppLocalizations.of(context).addFirstProfile,
-                            style: AppTextStyles.caption(context).copyWith(
-                              fontSize: 15,
-                              color: context.secondaryTextColor.withOpacity(0.6),
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : Column(
-                      children: [
-                        // Индикатор результатов поиска
-                        ValueListenableBuilder<TextEditingValue>(
-                          valueListenable: _searchController,
-                          builder: (context, value, child) {
-                            if (_isSearching && value.text.isNotEmpty) {
-                              return Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                  vertical: 8,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: Theme.of(context).cardColor,
-                                  border: Border(
-                                    bottom: BorderSide(
-                                      color: Theme.of(context).dividerColor,
-                                      width: 1,
-                                    ),
-                                  ),
-                                ),
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      LucideIcons.search,
-                                      size: 16,
-                                      color: context.textColor,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      _filteredProfiles.isEmpty
-                                          ? AppLocalizations.of(context).nothingFound
-                                          : '${AppLocalizations.of(context).found}: ${_filteredProfiles.length}',
-                                      style: AppTextStyles.caption(context).copyWith(
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }
-                            return const SizedBox.shrink();
-                          },
-                        ),
-                        // Список профилей
-                        Expanded(
-                          child: ValueListenableBuilder<TextEditingValue>(
-                            valueListenable: _searchController,
-                            builder: (context, value, child) {
-                              if (_filteredProfiles.isEmpty && _isSearching && value.text.isNotEmpty) {
-                                return Center(
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        LucideIcons.x,
-                                        size: 64,
-                                        color: context.secondaryTextColor.withOpacity(0.4),
-                                      ),
-                                      const SizedBox(height: 16),
-                                      Text(
-                                        AppLocalizations.of(context).nothingFound,
-                                        style: AppTextStyles.heading2(context).copyWith(
-                                          fontSize: 18,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      Text(
-                                        AppLocalizations.of(context).tryDifferentQuery,
-                                        style: AppTextStyles.caption(context).copyWith(
-                                          fontSize: 14,
-                                          color: context.secondaryTextColor.withOpacity(0.6),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }
-                              return ProfileList(
-                                profiles: _filteredProfiles,
-                                groups: _groups,
-                                primaryColor: _primaryColor,
-                                getGroupName: _getGroupName,
-                                onRefresh: _loadProfiles,
-                                onProfileUpdated: _loadProfiles,
-                              );
-                            },
-                          ),
-                        ),
-                      ],
+                          );
+                        }
+                        return const SizedBox.shrink();
+                      },
                     ),
-              ],
-            ),
+                    // Список профилей
+                    Expanded(
+                      child: ValueListenableBuilder<TextEditingValue>(
+                        valueListenable: _searchController,
+                        builder: (context, value, child) {
+                          if (_filteredProfiles.isEmpty && _isSearching && value.text.isNotEmpty) {
+                            return Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    LucideIcons.x,
+                                    size: 64,
+                                    color: context.secondaryTextColor.withOpacity(0.4),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    AppLocalizations.of(context).nothingFound,
+                                    style: AppTextStyles.heading2(context).copyWith(
+                                      fontSize: 18,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    AppLocalizations.of(context).tryDifferentQuery,
+                                    style: AppTextStyles.caption(context).copyWith(
+                                      fontSize: 14,
+                                      color: context.secondaryTextColor.withOpacity(0.6),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            );
+                          }
+                          return ProfileList(
+                            profiles: _filteredProfiles,
+                            groups: _groups,
+                            primaryColor: _primaryColor,
+                            getGroupName: _getGroupName,
+                            onRefresh: _loadProfiles,
+                            onProfileUpdated: _loadProfiles,
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
           ),
         ],
       ),
@@ -1042,7 +1049,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 builder: (context) => const AddProfileScreen(),
               ),
             );
+            if (!mounted) return;
             await _loadProfiles();
+            if (!mounted) return;
             // Обновляем уведомления после создания профиля
             final notificationService = NotificationService();
             await notificationService.scheduleAllNotifications();

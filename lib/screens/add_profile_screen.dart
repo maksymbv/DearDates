@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../models/profile.dart';
@@ -12,6 +12,7 @@ import '../services/group_service.dart';
 import '../widgets/group_selector.dart';
 import '../theme/theme_helper.dart';
 import '../localization/app_localizations.dart';
+import '../utils/date_utils.dart';
 
 class AddProfileScreen extends StatefulWidget {
   final Profile? profile;
@@ -25,17 +26,14 @@ class AddProfileScreen extends StatefulWidget {
 class _AddProfileScreenState extends State<AddProfileScreen> {
   late final GlobalKey<FormState> _formKey;
   late final TextEditingController _nameController;
-  late final TextEditingController _dayController;
-  late final TextEditingController _monthController;
-  late final TextEditingController _yearController;
   late final TextEditingController _notesController;
+  DateTime? _selectedDate;
   final StorageService _storageService = StorageService();
   final ThemeService _themeService = ThemeService();
   final PhotoService _photoService = PhotoService();
   final GroupService _groupService = GroupService();
   
   String? _photoPath;
-  String? _oldPhotoPath; // Для удаления старого фото при замене
   bool _photoDeleted = false; // Флаг, что пользователь явно удалил фото
   int? _avatarColor; // Цвет аватара, задается один раз при создании
   String? _selectedGroupId; // Выбранная группа
@@ -58,26 +56,20 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
     _nameController = TextEditingController(text: profile?.name ?? '');
     _notesController = TextEditingController(text: profile?.notes ?? '');
     
-    // Инициализируем поля даты
+    // Инициализируем дату
     if (profile != null) {
-      _dayController = TextEditingController(text: profile.birthdate.day.toString());
-      _monthController = TextEditingController(text: profile.birthdate.month.toString());
-      _yearController = TextEditingController(text: profile.birthdate.year.toString());
+      _selectedDate = profile.birthdate;
       // Проверяем существование файла перед установкой пути
       if (profile.photoPath != null && File(profile.photoPath!).existsSync()) {
         _photoPath = profile.photoPath;
-        _oldPhotoPath = profile.photoPath;
       } else {
         // Если файл не существует, не устанавливаем путь
         _photoPath = null;
-        _oldPhotoPath = null;
       }
       _avatarColor = profile.avatarColor;
       _selectedGroupId = profile.groupId;
     } else {
-      _dayController = TextEditingController();
-      _monthController = TextEditingController();
-      _yearController = TextEditingController();
+      _selectedDate = null;
       // Генерируем цвет аватара один раз при создании нового профиля
       _avatarColor = StorageService.generatePastelColor();
     }
@@ -87,8 +79,7 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
 
   Future<void> _loadGroups() async {
     final groups = await _groupService.getAllGroups();
-    if (!mounted) return;
-    setState(() {
+    safeSetState(() {
       _groups = groups;
     });
   }
@@ -105,86 +96,151 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
     if (!mounted) return;
     
     if (selectedId != null || (selectedId == null && _selectedGroupId != null)) {
-      setState(() {
+      safeSetState(() {
         _selectedGroupId = selectedId;
       });
     }
   }
 
-  DateTime? _parseDate() {
-    try {
-      final day = int.tryParse(_dayController.text.trim());
-      final month = int.tryParse(_monthController.text.trim());
-      final year = int.tryParse(_yearController.text.trim());
-
-      if (day == null || month == null || year == null) {
-        return null;
-      }
-
-      // Валидация диапазонов
-      final currentYear = DateTime.now().year;
-      if (day < 1 || day > 31) return null;
-      if (month < 1 || month > 12) return null;
-      if (year < 1900 || year > currentYear) return null;
-
-      final date = DateTime(year, month, day);
-      
-      // Проверка, что дата не в будущем
-      if (date.isAfter(DateTime.now())) {
-        return null;
-      }
-
-      // Проверка, что дата валидна (например, 31 февраля не существует)
-      if (date.year != year || date.month != month || date.day != day) {
-        return null;
-      }
-
-      return date;
-    } catch (e) {
-      return null;
-    }
-  }
-
   String? _validateDate() {
-    final day = _dayController.text.trim();
-    final month = _monthController.text.trim();
-    final year = _yearController.text.trim();
-
-    if (day.isEmpty || month.isEmpty || year.isEmpty) {
-      return 'Заполните все поля даты';
+    if (_selectedDate == null) {
+      return 'Please select birthdate';
     }
 
-    final dayNum = int.tryParse(day);
-    final monthNum = int.tryParse(month);
-    final yearNum = int.tryParse(year);
-    final currentYear = DateTime.now().year;
+    final date = _selectedDate!;
 
-    if (dayNum == null || monthNum == null || yearNum == null) {
-      return 'Введите корректные числа';
-    }
-
-    if (dayNum < 1 || dayNum > 31) {
-      return 'День должен быть от 1 до 31';
-    }
-
-    if (monthNum < 1 || monthNum > 12) {
-      return 'Месяц должен быть от 1 до 12';
-    }
-
-    if (yearNum < 1900 || yearNum > currentYear) {
-      return 'Год должен быть от 1900 до $currentYear';
-    }
-
-    final date = _parseDate();
-    if (date == null) {
-      return 'Неверная дата (проверьте, что дата существует)';
-    }
-
-    if (date.isAfter(DateTime.now())) {
-      return 'Дата не может быть в будущем';
+    // Проверка, что дата не в будущем
+    final now = DateTime.now();
+    if (date.isAfter(DateTime(now.year, now.month, now.day))) {
+      return 'Date cannot be in the future';
     }
 
     return null;
+  }
+
+  Future<void> _selectDate(BuildContext context) async {
+    if (!context.mounted) return;
+    
+    final DateTime now = DateTime.now();
+    final DateTime firstDate = DateTime(1, 1, 1);
+    final DateTime lastDate = DateTime(now.year, now.month, now.day);
+    final DateTime initialDate = _selectedDate ?? DateTime(now.year - 20, 1, 1);
+
+    DateTime? picked;
+
+    if (Platform.isIOS) {
+      // Используем Cupertino date picker для iOS (колесико)
+      if (!context.mounted) return;
+      picked = await showCupertinoModalPopup<DateTime>(
+        context: context,
+        builder: (context) => _buildCupertinoDatePicker(
+          context,
+          initialDate: initialDate,
+          firstDate: firstDate,
+          lastDate: lastDate,
+        ),
+      );
+    } else {
+      // Используем Material date picker для Android
+      if (!context.mounted) return;
+      picked = await showDatePicker(
+        context: context,
+        initialDate: initialDate,
+        firstDate: firstDate,
+        lastDate: lastDate,
+        locale: const Locale('en', 'US'),
+      );
+    }
+
+    if (picked != null && picked != _selectedDate) {
+      safeSetState(() {
+        _selectedDate = picked;
+      });
+    }
+  }
+
+  Widget _buildCupertinoDatePicker(
+    BuildContext context, {
+    required DateTime initialDate,
+    required DateTime firstDate,
+    required DateTime lastDate,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    DateTime selectedDate = initialDate;
+    
+    return StatefulBuilder(
+      builder: (context, setState) {
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.5,
+          ),
+          padding: const EdgeInsets.only(top: 6.0),
+          margin: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom,
+          ),
+          decoration: BoxDecoration(
+            color: isDark ? CupertinoColors.systemBackground.darkColor : CupertinoColors.systemBackground,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Кнопки управления
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      CupertinoButton(
+                        padding: EdgeInsets.zero,
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: Text(
+                          'Cancel',
+                          style: TextStyle(
+                            color: isDark ? CupertinoColors.white : CupertinoColors.black,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                      CupertinoButton(
+                        padding: EdgeInsets.zero,
+                        onPressed: () => Navigator.of(context).pop(selectedDate),
+                        child: Text(
+                          'Done',
+                          style: TextStyle(
+                            color: isDark ? CupertinoColors.white : CupertinoColors.activeBlue,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Date picker
+                Flexible(
+                  child: CupertinoDatePicker(
+                    initialDateTime: initialDate,
+                    minimumDate: firstDate,
+                    maximumDate: lastDate,
+                    mode: CupertinoDatePickerMode.date,
+                    use24hFormat: false,
+                    onDateTimeChanged: (DateTime newDate) {
+                      selectedDate = newDate;
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _saveProfile() async {
@@ -204,25 +260,33 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
       return;
     }
 
-    final birthdate = _parseDate();
-    if (birthdate == null) {
+    if (_selectedDate == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Неверная дата рождения'),
+          content: Text('Please select birthdate'),
           backgroundColor: Colors.red,
         ),
       );
       return;
     }
+
+    final birthdate = _selectedDate!;
     
     if (!mounted) return;
     final navigator = Navigator.of(context);
     
     try {
-      // Удаляем старое фото, если оно было заменено
-      if (_oldPhotoPath != null && _oldPhotoPath != _photoPath) {
-        await _photoService.deletePhoto(_oldPhotoPath);
+      // Удаляем старое фото, если оно было заменено новым
+      if (_isEditing && widget.profile != null && widget.profile!.photoPath != null) {
+        // Если было выбрано новое фото, удаляем старое
+        if (_photoPath != null && _photoPath != widget.profile!.photoPath) {
+          await _photoService.deletePhoto(widget.profile!.photoPath!);
+        }
+        // Если фото было удалено, удаляем старое
+        if (_photoDeleted && widget.profile!.photoPath != null) {
+          await _photoService.deletePhoto(widget.profile!.photoPath!);
+        }
       }
 
       if (_isEditing && widget.profile != null) {
@@ -241,6 +305,7 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
           // Фото не изменялось - сохраняем исходное из профиля
           photoPathToSave = widget.profile!.photoPath;
         }
+        if (!mounted) return;
         final updatedProfile = widget.profile!.copyWith(
           name: _nameController.text.trim(),
           birthdate: birthdate,
@@ -253,6 +318,7 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
         await _storageService.updateProfile(updatedProfile);
       } else {
         // Создание нового профиля
+        if (!mounted) return;
         final profile = Profile(
           id: DateTime.now().millisecondsSinceEpoch.toString(),
           name: _nameController.text.trim(),
@@ -268,9 +334,8 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
         await _storageService.addProfile(profile);
       }
       
-      if (mounted) {
-        navigator.pop(true);
-      }
+      if (!mounted) return;
+      navigator.pop(true);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -285,6 +350,7 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
 
   Future<void> _deleteProfile() async {
     if (!_isEditing || widget.profile == null) return;
+    if (!context.mounted) return;
 
     final localizations = AppLocalizations.of(context);
     final confirmed = await showModalBottomSheet<bool>(
@@ -399,6 +465,7 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
 
   Future<void> _showImageSourceDialog() async {
     if (!mounted) return;
+    if (!context.mounted) return;
     
     final localizations = AppLocalizations.of(context);
     final source = await showModalBottomSheet<ImageSource>(
@@ -431,11 +498,9 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
                   leading: Icon(LucideIcons.trash, size: 24, color: Colors.red[400]),
                   title: Text(localizations.deletePhoto, style: TextStyle(color: Colors.red[400])),
                   onTap: () {
+                    if (!context.mounted) return;
                     Navigator.pop(context);
-                    setState(() {
-                      if (_oldPhotoPath == _photoPath) {
-                        _oldPhotoPath = null;
-                      }
+                    safeSetState(() {
                       _photoPath = null;
                       _photoDeleted = true; // Отмечаем, что фото было явно удалено
                     });
@@ -457,29 +522,30 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
       newPhotoPath = await _photoService.pickImageFromCamera();
     }
 
-    if (newPhotoPath != null && mounted) {
-      setState(() {
+    if (newPhotoPath != null) {
+      safeSetState(() {
         _photoPath = newPhotoPath;
         _photoDeleted = false; // Сбрасываем флаг, так как выбрано новое фото
       });
     }
   }
 
+  // Защищённый setState
+  void safeSetState(VoidCallback fn) {
+    if (!mounted) return;
+    setState(fn);
+  }
+
   @override
   void dispose() {
-    _themeService.removeListener(_onThemeChanged);
     _nameController.dispose();
-    _dayController.dispose();
-    _monthController.dispose();
-    _yearController.dispose();
     _notesController.dispose();
+    _themeService.removeListener(_onThemeChanged);
     super.dispose();
   }
   
   void _onThemeChanged() {
-    if (mounted) {
-      setState(() {});
-    }
+    safeSetState(() {});
   }
 
   // Получение более темного оттенка цвета для градиента
@@ -652,7 +718,7 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
                       controller: _nameController,
                       maxLength: 50,
                       onChanged: (value) {
-                        setState(() {}); // Обновляем только текст инициала, цвет не меняется
+                        safeSetState(() {}); // Обновляем только текст инициала, цвет не меняется
                       },
                       decoration: InputDecoration(
                         labelText: AppLocalizations.of(context).name,
@@ -673,196 +739,70 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
                       ),
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
-                          return 'Введите имя';
+                          return 'Please enter name';
                         }
                         return null;
                       },
                     ),
                     const SizedBox(height: 24),
-                    // Заголовок даты рождения
-                    Text(
-                      'Дата рождения',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.grey[700],
-                        letterSpacing: 0.3,
+                    // Поле выбора даты рождения
+                    GestureDetector(
+                      onTap: () => _selectDate(context),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 18,
+                        ),
+                        decoration: BoxDecoration(
+                          color: context.isDarkMode
+                              ? Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5)
+                              : Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Birthdate',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: context.secondaryTextColor,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _selectedDate != null
+                                        ? formatDate(_selectedDate!)
+                                        : 'Select date',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: _selectedDate != null
+                                          ? context.textColor
+                                          : context.secondaryTextColor,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(
+                              LucideIcons.calendar,
+                              color: _primaryColor,
+                              size: 24,
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    // Поля даты
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextFormField(
-                            controller: _dayController,
-                            decoration: InputDecoration(
-                              labelText: AppLocalizations.of(context).dayField,
-                              labelStyle: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 16,
-                              ),
-                            ),
-                              style: const TextStyle(
-                                fontSize: 16,
-                                color: Color(0xFF2E2E2E),
-                                fontWeight: FontWeight.w500,
-                              ),
-                              textAlign: TextAlign.center,
-                              keyboardType: TextInputType.number,
-                              textInputAction: TextInputAction.next,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                                LengthLimitingTextInputFormatter(2),
-                              ],
-                              onChanged: (value) {
-                                if (value.isNotEmpty) {
-                                  final day = int.tryParse(value);
-                                  if (day != null && day > 31) {
-                                    _dayController.value = TextEditingValue(
-                                      text: '31',
-                                      selection: const TextSelection.collapsed(offset: 2),
-                                    );
-                                  }
-                                }
-                                if (value.length == 2 && _monthController.text.isEmpty) {
-                                  FocusScope.of(context).nextFocus();
-                                }
-                              },
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return null;
-                                }
-                                final day = int.tryParse(value.trim());
-                                if (day == null || day < 1 || day > 31) {
-                                  return '1-31';
-                                }
-                                return null;
-                              },
-                            ),
-                          ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _monthController,
-                            decoration: InputDecoration(
-                              labelText: AppLocalizations.of(context).monthField,
-                              labelStyle: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 16,
-                              ),
-                            ),
-                              style: const TextStyle(
-                                fontSize: 16,
-                                color: Color(0xFF2E2E2E),
-                                fontWeight: FontWeight.w500,
-                              ),
-                              textAlign: TextAlign.center,
-                              keyboardType: TextInputType.number,
-                              textInputAction: TextInputAction.next,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                                LengthLimitingTextInputFormatter(2),
-                              ],
-                              onChanged: (value) {
-                                if (value.isNotEmpty) {
-                                  final month = int.tryParse(value);
-                                  if (month != null && month > 12) {
-                                    _monthController.value = TextEditingValue(
-                                      text: '12',
-                                      selection: const TextSelection.collapsed(offset: 2),
-                                    );
-                                  }
-                                }
-                                if (value.length == 2 && _yearController.text.isEmpty) {
-                                  FocusScope.of(context).nextFocus();
-                                }
-                              },
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return null;
-                                }
-                                final month = int.tryParse(value.trim());
-                                if (month == null || month < 1 || month > 12) {
-                                  return '1-12';
-                                }
-                                return null;
-                              },
-                            ),
-                          ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: TextFormField(
-                            controller: _yearController,
-                            decoration: InputDecoration(
-                              labelText: AppLocalizations.of(context).yearField,
-                              labelStyle: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 16,
-                              ),
-                            ),
-                              style: const TextStyle(
-                                fontSize: 16,
-                                color: Color(0xFF2E2E2E),
-                                fontWeight: FontWeight.w500,
-                              ),
-                              textAlign: TextAlign.center,
-                              keyboardType: TextInputType.number,
-                              textInputAction: TextInputAction.done,
-                              inputFormatters: [
-                                FilteringTextInputFormatter.digitsOnly,
-                                LengthLimitingTextInputFormatter(4),
-                              ],
-                              onChanged: (value) {
-                                if (value.isNotEmpty) {
-                                  final year = int.tryParse(value);
-                                  final currentYear = DateTime.now().year;
-                                  if (year != null && year > currentYear) {
-                                    _yearController.value = TextEditingValue(
-                                      text: currentYear.toString(),
-                                      selection: TextSelection.collapsed(offset: currentYear.toString().length),
-                                    );
-                                  }
-                                }
-                              },
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return null;
-                                }
-                                final year = int.tryParse(value.trim());
-                                final currentYear = DateTime.now().year;
-                                if (year == null || year < 1900 || year > currentYear) {
-                                  return '1900-$currentYear';
-                                }
-                                return null;
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
                     const SizedBox(height: 8),
                     Builder(
                       builder: (context) {
                         final dateError = _validateDate();
-                        if (dateError != null && 
-                            _dayController.text.isNotEmpty &&
-                            _monthController.text.isNotEmpty &&
-                            _yearController.text.isNotEmpty) {
+                        if (dateError != null && _selectedDate != null) {
                           return Padding(
                             padding: const EdgeInsets.only(left: 4, top: 4),
                             child: Text(
@@ -924,7 +864,9 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
                           vertical: 18,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: context.isDarkMode
+                              ? Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5)
+                              : Colors.white,
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Row(
@@ -952,7 +894,7 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
                                               createdAt: DateTime.now(),
                                             ),
                                           ).name
-                                        : 'Без группы',
+                                        : AppLocalizations.of(context).noGroup,
                                     style: TextStyle(
                                       fontSize: 16,
                                       color: context.textColor,

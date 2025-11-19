@@ -29,7 +29,6 @@ class ProfileCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final daysUntil = daysUntilBirthday(profile.birthdate);
-    final age = getAge(profile.birthdate);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -131,7 +130,7 @@ class ProfileCard extends StatelessWidget {
                             ),
                           ),
                         ),
-                        if (groupName != null && groupName != AppLocalizations.of(context).noGroup) ...[
+                        if (profile.groupId != null && groupName != null) ...[
                           const SizedBox(width: 8),
                           GroupBadge(
                             groupName: groupName!,
@@ -150,7 +149,7 @@ class ProfileCard extends StatelessWidget {
                         ),
                         const SizedBox(width: 6),
                         Text(
-                          '${formatDate(profile.birthdate)} • $age ${_getAgeText(age, AppLocalizations.of(context))}',
+                          formatDateShort(profile.birthdate),
                           style: AppTextStyles.secondary(context).copyWith(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
@@ -191,21 +190,6 @@ class ProfileCard extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _getAgeText(int age, AppLocalizations localizations) {
-    final lastDigit = age % 10;
-    final lastTwoDigits = age % 100;
-
-    if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
-      return localizations.yearsOld;
-    } else if (lastDigit == 1) {
-      return localizations.year;
-    } else if (lastDigit >= 2 && lastDigit <= 4) {
-      return localizations.years;
-    } else {
-      return localizations.yearsOld;
-    }
   }
 
   String _getDaysText(int days, AppLocalizations localizations) {

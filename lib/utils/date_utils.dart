@@ -1,9 +1,17 @@
+import 'package:intl/intl.dart';
+
 String formatDate(DateTime date) {
-  // Встроенное форматирование без intl
-  final day = date.day.toString().padLeft(2, '0');
-  final month = date.month.toString().padLeft(2, '0');
-  final year = date.year.toString();
-  return '$day.$month.$year';
+  return DateFormat('dd.MM.yyyy').format(date);
+}
+
+String formatDateShort(DateTime date) {
+  // Форматирование в формате "1 January" (день + месяц)
+  return DateFormat('d MMMM', 'en_US').format(date);
+}
+
+String formatDateFull(DateTime date) {
+  // Форматирование в формате "1 January 2005" (день + месяц + год)
+  return DateFormat('d MMMM yyyy', 'en_US').format(date);
 }
 
 int getAge(DateTime birthdate) {

@@ -5,9 +5,9 @@ import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import '../models/profile.dart';
 import '../localization/app_localizations.dart';
+import '../utils/date_utils.dart';
 import 'storage_service.dart';
 import 'notification_text_builder.dart';
-import 'birthday_date_helper.dart';
 
 class NotificationService {
   static final NotificationService _instance = NotificationService._internal();
@@ -32,7 +32,7 @@ class NotificationService {
     // Настройки для Android
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     
-    // Настройки для iOS и macOS (используют одинаковые Darwin настройки)
+    // Настройки для iOS
     const darwinSettings = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
@@ -42,7 +42,6 @@ class NotificationService {
     const initSettings = InitializationSettings(
       android: androidSettings,
       iOS: darwinSettings,
-      macOS: darwinSettings,
     );
 
     await _notifications.initialize(
@@ -97,15 +96,23 @@ class NotificationService {
     await initialize();
     
     final loc = await _createTextBuilder();
-    final birthday = BirthdayDateHelper.nextBirthdayAt10(profile);
+    final nextBirthday = calculateNextBirthday(profile.birthdate);
+    final birthday = tz.TZDateTime(
+      tz.local,
+      nextBirthday.year,
+      nextBirthday.month,
+      nextBirthday.day,
+      10, // 10:00 утра
+      0,
+    );
     
-    if (!BirthdayDateHelper.isInFuture(birthday)) return;
+    if (!birthday.isAfter(tz.TZDateTime.now(tz.local))) return;
 
     // 1) Напоминания заранее
     final birthdayDate = DateTime(birthday.year, birthday.month, birthday.day);
     for (final days in reminderDays) {
       final date = birthday.subtract(Duration(days: days));
-      if (BirthdayDateHelper.isInFuture(date)) {
+      if (date.isAfter(tz.TZDateTime.now(tz.local))) {
         await _schedule(
           id: _id(profile, days),
           title: loc.titleForReminder(),
@@ -147,11 +154,6 @@ class NotificationService {
         showWhen: true,
       ),
       iOS: const DarwinNotificationDetails(
-        presentAlert: true,
-        presentBadge: true,
-        presentSound: true,
-      ),
-      macOS: const DarwinNotificationDetails(
         presentAlert: true,
         presentBadge: true,
         presentSound: true,

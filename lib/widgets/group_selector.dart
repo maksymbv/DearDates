@@ -13,6 +13,7 @@ class GroupSelector {
     required String? selectedGroupId,
     required Color primaryColor,
   }) async {
+    if (!context.mounted) return null;
     return await showModalBottomSheet<String?>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -106,7 +107,7 @@ class _GroupSelectorContentState extends State<_GroupSelectorContent> {
                 child: ListView(
                   shrinkWrap: true,
                   children: [
-                    // "Без группы"
+                    // "All"
                     ListTile(
                       title: Text(
                         AppLocalizations.of(context).noGroup,
