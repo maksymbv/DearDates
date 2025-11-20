@@ -8,6 +8,9 @@ import '../services/theme_service.dart';
 import '../services/group_service.dart';
 import '../utils/date_utils.dart';
 import '../widgets/profile_list.dart';
+import '../widgets/group_menu_dialog.dart';
+import '../widgets/create_group_dialog.dart';
+import '../widgets/edit_group_dialog.dart';
 import '../theme/app_text_styles.dart';
 import '../theme/theme_helper.dart';
 import '../localization/app_localizations.dart';
@@ -180,81 +183,9 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _showGroupMenu(BuildContext context, Group group) async {
     if (!context.mounted || _isModalOpen) return;
     _isModalOpen = true;
-    final localizations = AppLocalizations.of(context);
-    final result = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context, 'delete'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.red,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ).copyWith(
-                          splashFactory: NoSplash.splashFactory,
-                        ),
-                        child: Text(
-                          localizations.delete,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context, 'edit'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _primaryColor,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ).copyWith(
-                          splashFactory: NoSplash.splashFactory,
-                        ),
-                        child: Text(
-                          localizations.editAction,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-
+    
+    final result = await GroupMenuDialog.show(context, group, _primaryColor);
+    
     _isModalOpen = false;
     if (!mounted || !context.mounted) return;
     
@@ -275,245 +206,36 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted || !context.mounted || _isModalOpen) return;
     _isModalOpen = true;
     
-    final localizations = AppLocalizations.of(context);
-    final controller = TextEditingController();
-    final result = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Создать группу',
-                    style: AppTextStyles.heading2(context).copyWith(fontSize: 20),
-                  ),
-                  const SizedBox(height: 20),
-                  TextField(
-                    controller: controller,
-                    autofocus: true,
-                    maxLength: 30,
-                    decoration: InputDecoration(
-                      labelText: localizations.groupName,
-                      counterText: '',
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      filled: true,
-                      fillColor: Theme.of(context).scaffoldBackgroundColor,
-                    ),
-                    onSubmitted: (value) {
-                      final name = value.trim();
-                      if (name.isNotEmpty) {
-                        Navigator.pop(context, name);
-                      }
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ).copyWith(
-                            splashFactory: NoSplash.splashFactory,
-                          ),
-                          child: Text(
-                            localizations.cancel,
-                            style: AppTextStyles.button(context).copyWith(
-                              color: context.textColor,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            final name = controller.text.trim();
-                            if (name.isNotEmpty) {
-                              Navigator.pop(context, name);
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _primaryColor,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ).copyWith(
-                            splashFactory: NoSplash.splashFactory,
-                          ),
-                          child: Text(
-                            localizations.create,
-                            style: AppTextStyles.button(context),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-
+    final result = await CreateGroupDialog.show(context, _primaryColor);
+    
     _isModalOpen = false;
-    if (!mounted) {
-      controller.dispose();
-      return;
-    }
+    if (!mounted) return;
     
     if (result != null && result.isNotEmpty) {
       await _groupService.createGroup(result);
       await _loadProfiles();
     }
-    controller.dispose();
   }
 
   // Диалог редактирования группы
   Future<void> _showEditGroupDialog(BuildContext context, Group group) async {
-    if (!mounted || !context.mounted) return;
+    if (!mounted || !context.mounted || _isModalOpen) return;
+    _isModalOpen = true;
     
-    final localizations = AppLocalizations.of(context);
-    final controller = TextEditingController(text: group.name);
-    final result = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
-        ),
-        child: SafeArea(
-          child: Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    localizations.editGroup,
-                    style: AppTextStyles.heading2(context),
-                  ),
-                  const SizedBox(height: 20),
-                  TextField(
-                    controller: controller,
-                    autofocus: true,
-                    maxLength: 30,
-                    decoration: InputDecoration(
-                      labelText: localizations.groupName,
-                      labelStyle: AppTextStyles.secondary(context).copyWith(fontSize: 15),
-                      counterText: '',
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 18,
-                      ),
-                    ),
-                    style: AppTextStyles.body(context).copyWith(fontSize: 16),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ).copyWith(
-                            splashFactory: NoSplash.splashFactory,
-                          ),
-                          child: Text(
-                            localizations.cancel,
-                            style: AppTextStyles.button(context).copyWith(
-                              color: context.secondaryTextColor,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: () {
-                            final name = controller.text.trim();
-                            if (name.isNotEmpty) {
-                              Navigator.pop(context, name);
-                            }
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: _primaryColor,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ).copyWith(
-                            splashFactory: NoSplash.splashFactory,
-                          ),
-                          child: Text(
-                            localizations.save,
-                            style: AppTextStyles.button(context),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-
+    final result = await EditGroupDialog.show(context, group, _primaryColor);
+    
     _isModalOpen = false;
-    if (!mounted) {
-      controller.dispose();
-      return;
-    }
+    if (!mounted) return;
     
-    if (result != null && result.isNotEmpty) {
+    // Небольшая задержка перед обновлением данных
+    await Future.delayed(const Duration(milliseconds: 200));
+    
+    if (!mounted) return;
+    
+    if (result != null && result.isNotEmpty && result != group.name) {
       await _groupService.updateGroup(group.copyWith(name: result));
       await _loadProfiles();
     }
-    controller.dispose();
   }
 
   // Удаление группы

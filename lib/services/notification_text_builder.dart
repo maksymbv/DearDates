@@ -15,7 +15,8 @@ class NotificationTextBuilder {
 
   String bodyForReminder(String name, int days, DateTime birthday) {
     final daysText = _plural(days);
-    final date = formatDate(birthday);
+    final locale = loc.locale;
+    final date = formatDate(birthday, locale);
     return loc.birthdayReminderBody
         .replaceAll('{days}', days.toString())
         .replaceAll('{daysText}', daysText)

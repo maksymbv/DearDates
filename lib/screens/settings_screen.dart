@@ -58,11 +58,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   
   String _getThemeText() {
     final localizations = AppLocalizations.of(context);
-    if (localizations == null) {
-      final brightness = _isDarkMode ? 'Темная' : 'Светлая';
-      final color = _currentTheme.displayName.toLowerCase();
-      return '$brightness $color';
-    }
     final brightness = _isDarkMode ? localizations.dark : localizations.light;
     final color = _currentTheme == AppTheme.pink ? localizations.pink : localizations.blue;
     return '$brightness $color';
@@ -71,19 +66,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   String _getReminderDaysText() {
     final localizations = AppLocalizations.of(context);
-    if (localizations == null) {
-      if (_reminderDays.isEmpty) {
-        return 'Не выбрано';
-      }
-      _reminderDays.sort();
-      if (_reminderDays.length == 1) {
-        final day = _reminderDays.first;
-        final dayText = day == 1 ? 'день' : (day >= 2 && day <= 4 ? 'дня' : 'дней');
-        return 'За $day $dayText';
-      }
-      final daysList = _reminderDays.map((d) => '$d').join(', ');
-      return 'За $daysList дней';
-    }
     
     if (_reminderDays.isEmpty) {
       return localizations.notSelected;
@@ -243,23 +225,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 // Подпись внизу
                 Padding(
                   padding: const EdgeInsets.only(bottom: 24),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        'Made by Max Baranov with ',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: context.secondaryTextColor.withOpacity(0.6),
-                        ),
-                      ),
-                      Text(
-                        '❤️',
-                        style: TextStyle(
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
+                  child: Text(
+                    localizations.madeBy,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: context.secondaryTextColor.withOpacity(0.6),
+                    ),
                   ),
                 ),
               ],

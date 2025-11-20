@@ -1,16 +1,21 @@
 import 'package:flutter/material.dart';
+import 'app_colors.dart';
 
 /// Расширение для BuildContext с общими методами работы с темой
 /// Устраняет дублирование кода во всех экранах
 extension ThemeHelper on BuildContext {
-  /// Основной цвет текста
-  Color get textColor => Theme.of(this).colorScheme.onSurface;
+  /// Получить AppColorScheme из темы
+  AppColorScheme get _appColors => Theme.of(this).extension<AppColorScheme>() ?? 
+    (isDarkMode ? AppColorScheme.dark() : AppColorScheme.light());
   
-  /// Вторичный цвет текста (с прозрачностью)
-  Color get secondaryTextColor => Theme.of(this).colorScheme.onSurface.withOpacity(0.7);
+  /// Основной цвет текста
+  Color get textColor => _appColors.text;
+  
+  /// Вторичный цвет текста
+  Color get secondaryTextColor => _appColors.secondaryText;
   
   /// Цвет иконок
-  Color get iconColor => Theme.of(this).iconTheme.color ?? Theme.of(this).colorScheme.onSurface;
+  Color get iconColor => _appColors.icon;
   
   /// Проверка темной темы
   bool get isDarkMode => Theme.of(this).brightness == Brightness.dark;

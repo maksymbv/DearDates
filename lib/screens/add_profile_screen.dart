@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../models/profile.dart';
@@ -10,6 +9,7 @@ import '../services/theme_service.dart';
 import '../services/photo_service.dart';
 import '../services/group_service.dart';
 import '../widgets/group_selector.dart';
+import '../widgets/custom_date_picker.dart';
 import '../theme/theme_helper.dart';
 import '../localization/app_localizations.dart';
 import '../utils/date_utils.dart';
@@ -103,8 +103,9 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
   }
 
   String? _validateDate() {
+    final localizations = AppLocalizations.of(context);
     if (_selectedDate == null) {
-      return 'Please select birthdate';
+      return localizations.pleaseSelectBirthdate;
     }
 
     final date = _selectedDate!;
@@ -112,7 +113,7 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
     // Проверка, что дата не в будущем
     final now = DateTime.now();
     if (date.isAfter(DateTime(now.year, now.month, now.day))) {
-      return 'Date cannot be in the future';
+      return localizations.dateCannotBeFuture;
     }
 
     return null;
@@ -126,121 +127,18 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
     final DateTime lastDate = DateTime(now.year, now.month, now.day);
     final DateTime initialDate = _selectedDate ?? DateTime(now.year - 20, 1, 1);
 
-    DateTime? picked;
-
-    if (Platform.isIOS) {
-      // Используем Cupertino date picker для iOS (колесико)
-      if (!context.mounted) return;
-      picked = await showCupertinoModalPopup<DateTime>(
-        context: context,
-        builder: (context) => _buildCupertinoDatePicker(
-          context,
-          initialDate: initialDate,
-          firstDate: firstDate,
-          lastDate: lastDate,
-        ),
-      );
-    } else {
-      // Используем Material date picker для Android
-      if (!context.mounted) return;
-      picked = await showDatePicker(
-        context: context,
-        initialDate: initialDate,
-        firstDate: firstDate,
-        lastDate: lastDate,
-        locale: const Locale('en', 'US'),
-      );
-    }
+    final picked = await CustomDatePicker.show(
+      context,
+      initialDate: initialDate,
+      firstDate: firstDate,
+      lastDate: lastDate,
+    );
 
     if (picked != null && picked != _selectedDate) {
       safeSetState(() {
         _selectedDate = picked;
       });
     }
-  }
-
-  Widget _buildCupertinoDatePicker(
-    BuildContext context, {
-    required DateTime initialDate,
-    required DateTime firstDate,
-    required DateTime lastDate,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    DateTime selectedDate = initialDate;
-    
-    return StatefulBuilder(
-      builder: (context, setState) {
-        return Container(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(context).size.height * 0.5,
-          ),
-          padding: const EdgeInsets.only(top: 6.0),
-          margin: EdgeInsets.only(
-            bottom: MediaQuery.of(context).viewInsets.bottom,
-          ),
-          decoration: BoxDecoration(
-            color: isDark ? CupertinoColors.systemBackground.darkColor : CupertinoColors.systemBackground,
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(20),
-              topRight: Radius.circular(20),
-            ),
-          ),
-          child: SafeArea(
-            top: false,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Кнопки управления
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      CupertinoButton(
-                        padding: EdgeInsets.zero,
-                        onPressed: () => Navigator.of(context).pop(),
-                        child: Text(
-                          'Cancel',
-                          style: TextStyle(
-                            color: isDark ? CupertinoColors.white : CupertinoColors.black,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                      CupertinoButton(
-                        padding: EdgeInsets.zero,
-                        onPressed: () => Navigator.of(context).pop(selectedDate),
-                        child: Text(
-                          'Done',
-                          style: TextStyle(
-                            color: isDark ? CupertinoColors.white : CupertinoColors.activeBlue,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Date picker
-                Flexible(
-                  child: CupertinoDatePicker(
-                    initialDateTime: initialDate,
-                    minimumDate: firstDate,
-                    maximumDate: lastDate,
-                    mode: CupertinoDatePickerMode.date,
-                    use24hFormat: false,
-                    onDateTimeChanged: (DateTime newDate) {
-                      selectedDate = newDate;
-                    },
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
   }
 
   Future<void> _saveProfile() async {
@@ -262,9 +160,10 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
 
     if (_selectedDate == null) {
       if (!mounted) return;
+      final localizations = AppLocalizations.of(context);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select birthdate'),
+        SnackBar(
+          content: Text(localizations.pleaseSelectBirthdate),
           backgroundColor: Colors.red,
         ),
       );
@@ -338,9 +237,10 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
       navigator.pop(true);
     } catch (e) {
       if (mounted) {
+        final localizations = AppLocalizations.of(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Ошибка при сохранении: $e'),
+            content: Text('${localizations.errorSaving}: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -452,12 +352,13 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Ошибка при удалении: $e'),
-              backgroundColor: Colors.red,
-            ),
-          );
+        final localizations = AppLocalizations.of(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${localizations.errorDeleting}: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
         }
       }
     }
@@ -601,15 +502,10 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
       body: Form(
         key: _formKey,
         child: ListView(
-          padding: const EdgeInsets.all(20),
           children: [
             // Карточка с полями
             Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: context.cardShadows,
-              ),
+              width: double.infinity,
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Column(
@@ -633,14 +529,7 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
                                   ],
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withOpacity(0.1),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ],
+                                )
                               ),
                               child: _photoPath != null && File(_photoPath!).existsSync()
                                   ? ClipOval(
@@ -738,8 +627,9 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
                         color: context.textColor,
                       ),
                       validator: (value) {
+                        final localizations = AppLocalizations.of(context);
                         if (value == null || value.trim().isEmpty) {
-                          return 'Please enter name';
+                          return localizations.pleaseEnterName;
                         }
                         return null;
                       },
@@ -754,10 +644,14 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
                           vertical: 18,
                         ),
                         decoration: BoxDecoration(
-                          color: context.isDarkMode
-                              ? Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5)
-                              : Colors.white,
+                          color: Theme.of(context).inputDecorationTheme.fillColor ?? Theme.of(context).cardColor,
                           borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.grey[800]!
+                                : Colors.grey[200]!,
+                            width: 1,
+                          ),
                         ),
                         child: Row(
                           children: [
@@ -766,7 +660,7 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'Birthdate',
+                                    AppLocalizations.of(context).birthdate,
                                     style: TextStyle(
                                       fontSize: 12,
                                       color: context.secondaryTextColor,
@@ -776,8 +670,8 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
                                   const SizedBox(height: 4),
                                   Text(
                                     _selectedDate != null
-                                        ? formatDate(_selectedDate!)
-                                        : 'Select date',
+                                        ? formatDate(_selectedDate!, Localizations.localeOf(context))
+                                        : AppLocalizations.of(context).selectDate,
                                     style: TextStyle(
                                       fontSize: 16,
                                       color: _selectedDate != null
@@ -864,10 +758,14 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
                           vertical: 18,
                         ),
                         decoration: BoxDecoration(
-                          color: context.isDarkMode
-                              ? Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5)
-                              : Colors.white,
+                          color: Theme.of(context).inputDecorationTheme.fillColor ?? Theme.of(context).cardColor,
                           borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: Theme.of(context).brightness == Brightness.dark
+                                ? Colors.grey[800]!
+                                : Colors.grey[200]!,
+                            width: 1,
+                          ),
                         ),
                         child: Row(
                           children: [
@@ -890,7 +788,7 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
                                             (g) => g.id == _selectedGroupId,
                                             orElse: () => Group(
                                               id: '',
-                                              name: 'Неизвестная группа',
+                                              name: AppLocalizations.of(context).unknownGroup,
                                               createdAt: DateTime.now(),
                                             ),
                                           ).name
@@ -908,50 +806,36 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 28),
+                    // Кнопка удаления (только при редактировании)
+                    if (_isEditing) ...[
+                      SizedBox(
+                        width: double.infinity,
+                        child: TextButton(
+                          onPressed: _deleteProfile,
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ).copyWith(
+                            splashFactory: NoSplash.splashFactory,
+                          ),
+                          child: Text(
+                            AppLocalizations.of(context).delete,
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.red,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 28),
-            // Кнопка удаления (только при редактировании)
-            if (_isEditing) ...[
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  color: Colors.red,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.red.withOpacity(0.3),
-                      blurRadius: 12,
-                      offset: const Offset(0, 6),
-                    ),
-                  ],
-                ),
-                child: ElevatedButton(
-                  onPressed: _deleteProfile,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.transparent,
-                    shadowColor: Colors.transparent,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 18),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ).copyWith(
-                    splashFactory: NoSplash.splashFactory,
-                  ),
-                  child: Text(
-                    AppLocalizations.of(context).delete,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
           ],
         ),
       ),

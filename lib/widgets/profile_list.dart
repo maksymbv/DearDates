@@ -3,7 +3,7 @@ import '../models/profile.dart';
 import '../models/group.dart';
 import 'profile_card.dart';
 
-/// Список профилей с RefreshIndicator
+/// List of profiles with RefreshIndicator
 class ProfileList extends StatelessWidget {
   final List<Profile> profiles;
   final List<Group> groups;

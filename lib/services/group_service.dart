@@ -1,5 +1,4 @@
-import 'dart:convert';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../models/group.dart';
 
 class GroupService {
@@ -8,35 +7,25 @@ class GroupService {
   factory GroupService() => _instance;
   GroupService._internal();
   
-  static const String _groupsKey = 'groups';
   static const String _defaultGroupId = 'no_group';
+  
+  Box<Group> get _groupsBox => Hive.box<Group>('groups');
 
   // Получить все группы
   Future<List<Group>> getAllGroups() async {
-    final prefs = await SharedPreferences.getInstance();
-    final groupsJson = prefs.getStringList(_groupsKey);
-
-    if (groupsJson == null || groupsJson.isEmpty) {
-      return [];
-    }
-
-    final groups = groupsJson
-        .map((json) => Group.fromJson(jsonDecode(json) as Map<String, dynamic>))
-        .toList();
-
+    final groups = _groupsBox.values.toList();
     // Сортируем по порядку
     groups.sort((a, b) => a.order.compareTo(b.order));
-
     return groups;
   }
 
   // Сохранить все группы
   Future<void> _saveGroups(List<Group> groups) async {
-    final prefs = await SharedPreferences.getInstance();
-    final groupsJson = groups
-        .map((group) => jsonEncode(group.toJson()))
-        .toList();
-    await prefs.setStringList(_groupsKey, groupsJson);
+    await _groupsBox.clear();
+    final Map<String, Group> groupsMap = {
+      for (var group in groups) group.id: group
+    };
+    await _groupsBox.putAll(groupsMap);
   }
 
   // Создать новую группу
@@ -49,39 +38,24 @@ class GroupService {
       order: groups.length,
     );
 
-    groups.add(newGroup);
-    await _saveGroups(groups);
+    await _groupsBox.put(newGroup.id, newGroup);
     return newGroup;
   }
 
   // Обновить группу
   Future<void> updateGroup(Group group) async {
-    final groups = await getAllGroups();
-    final index = groups.indexWhere((g) => g.id == group.id);
-    
-    if (index != -1) {
-      groups[index] = group;
-      await _saveGroups(groups);
-    }
+    await _groupsBox.put(group.id, group);
   }
 
   // Удалить группу
   Future<void> deleteGroup(String groupId) async {
-    final groups = await getAllGroups();
-    groups.removeWhere((g) => g.id == groupId);
-    await _saveGroups(groups);
+    await _groupsBox.delete(groupId);
   }
 
   // Получить группу по ID
   Future<Group?> getGroupById(String? groupId) async {
     if (groupId == null) return null;
-    
-    final groups = await getAllGroups();
-    try {
-      return groups.firstWhere((g) => g.id == groupId);
-    } catch (e) {
-      return null;
-    }
+    return _groupsBox.get(groupId);
   }
 
   // Получить ID группы "Без группы"
@@ -96,4 +70,3 @@ class GroupService {
     await _saveGroups(groups);
   }
 }
-

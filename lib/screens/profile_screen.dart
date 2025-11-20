@@ -12,6 +12,7 @@ import '../theme/app_text_styles.dart';
 import '../theme/theme_helper.dart';
 import '../localization/app_localizations.dart';
 import 'add_profile_screen.dart';
+import 'edit_gift_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   final String profileId;
@@ -29,8 +30,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Profile? _profile;
   List<Group> _groups = [];
   bool _isLoading = true;
-  final TextEditingController _giftInputController = TextEditingController();
-  String? _editingGiftId; // ID редактируемой идеи (null = новая идея)
   
   Color get _primaryColor => Color(_themeService.primaryColor);
 
@@ -38,16 +37,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _loadProfile();
-    // Слушаем изменения в поле ввода для активации кнопки
-    _giftInputController.addListener(() {
-      setState(() {}); // Обновляем UI для изменения цвета кнопки
-    });
-  }
-
-  @override
-  void dispose() {
-    _giftInputController.dispose();
-    super.dispose();
   }
 
   Future<void> _loadProfile() async {
@@ -68,7 +57,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
     );
     
-    // Если профиль не найден (был удален), закрываем экран
+    // If the profile is not found (was deleted), close the screen
     if (profile.id.isEmpty) {
       if (mounted) {
         Navigator.of(context).pop();
@@ -87,94 +76,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
 
-  void _startEditingGift(String? giftId) {
+  Future<void> _openGiftEditor(Gift? gift) async {
     if (_profile == null) return;
-    
-    if (giftId == null) {
-      // Начинаем добавление новой идеи
-      setState(() {
-        _editingGiftId = null;
-        _giftInputController.clear();
-      });
-    } else {
-      // Начинаем редактирование существующей идеи (только для будущих подарков)
-      final gift = _profile!.gifts.firstWhere((g) => g.id == giftId);
-      // Проверяем, что подарок еще не подарен
-      if (gift.isGiven) return;
-      
-      setState(() {
-        _editingGiftId = giftId;
-        _giftInputController.text = gift.idea;
-      });
-    }
-  }
-
-  void _cancelEditing() {
-    setState(() {
-      _editingGiftId = null;
-      _giftInputController.clear();
-    });
-  }
-
-  Future<void> _saveGiftFromInput() async {
-    if (_profile == null) return;
-
-    final text = _giftInputController.text.trim();
-
-    // Если текст пустой - отменяем редактирование
-    if (text.isEmpty) {
-      _cancelEditing();
-      return;
-    }
-
-    if (_editingGiftId == null) {
-      // Создаем новую идею
-      final gift = Gift(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        profileId: _profile!.id,
-        idea: text,
-        createdAt: DateTime.now(),
-      );
-      await _storageService.addGift(_profile!.id, gift);
-    } else {
-      // Обновляем существующую идею
-      await _saveGift(_editingGiftId!, text);
-    }
-
-    // Очищаем поле и перезагружаем профиль
-    _giftInputController.clear();
-    await _loadProfile();
-
     if (!mounted) return;
-    setState(() {
-      _editingGiftId = null;
-    });
-  }
 
-  Future<void> _saveGift(String giftId, String newText) async {
-    if (_profile == null) return;
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditGiftScreen(
+          profileId: _profile!.id,
+          gift: gift,
+        ),
+      ),
+    );
 
-    final trimmed = newText.trim();
-    final gift = _profile!.gifts.firstWhere((g) => g.id == giftId);
-
-    if (trimmed.isEmpty) {
-      // Если текст пустой - удаляем подарок
-      await _storageService.deleteGift(_profile!.id, giftId);
-      await _loadProfile();
-    } else if (gift.idea != trimmed) {
-      // Обновляем только если текст изменился
-      final updatedGift = gift.copyWith(idea: trimmed);
-      await _storageService.updateGift(_profile!.id, updatedGift);
+    // If true, then there were changes - reload the profile
+    if (result == true && mounted) {
       await _loadProfile();
     }
   }
 
-  Future<void> _deleteGift(String giftId) async {
-    if (_profile == null) return;
-    
-    await _storageService.deleteGift(_profile!.id, giftId);
-    await _loadProfile();
-  }
 
   Future<void> _toggleGiftStatus(String giftId) async {
     if (_profile == null) return;
@@ -185,7 +106,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     
     final updatedGift = gift.copyWith(
       isGiven: isNowGiven,
-      givenYear: isNowGiven ? currentYear : null, // Записываем текущий год при отметке как подаренного
+      givenYear: isNowGiven ? currentYear : null, // Save the current year when marking as given
     );
     await _storageService.updateGift(_profile!.id, updatedGift);
     await _loadProfile();
@@ -219,7 +140,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (_profile == null) {
       return Scaffold(
         appBar: AppBar(
-          title: const Text('Профиль не найден'),
+          title: Text(AppLocalizations.of(context).profileNotFound),
           centerTitle: true,
           titleSpacing: 0,
           leading: Padding(
@@ -240,7 +161,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
         ),
-        body: const Center(child: Text('Профиль не найден')),
+        body: Center(child: Text(AppLocalizations.of(context).profileNotFound)),
       );
     }
 
@@ -249,17 +170,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final futureGifts = profile.gifts.where((g) => !g.isGiven).toList();
     final pastGifts = profile.gifts.where((g) => g.isGiven).toList();
     
-    // Группируем подаренные подарки по годам
+    // Group given gifts by years
     final Map<int, List<Gift>> giftsByYear = {};
     for (var gift in pastGifts) {
-      final year = gift.givenYear ?? DateTime.now().year; // Если год не указан, используем текущий
+      final year = gift.givenYear ?? DateTime.now().year; // If the year is not specified, use the current year
       if (!giftsByYear.containsKey(year)) {
         giftsByYear[year] = [];
       }
       giftsByYear[year]!.add(gift);
     }
     
-    // Сортируем годы по убыванию (новые годы сверху)
+    // Sort years in descending order (new years at the top)
     final sortedYears = giftsByYear.keys.toList()..sort((a, b) => b.compareTo(a));
 
     return Scaffold(
@@ -283,7 +204,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
         actions: [
-          // Кнопка редактирования
+          // Edit button
           Padding(
             padding: const EdgeInsets.only(right: 20),
             child: IconButton(
@@ -312,160 +233,116 @@ class _ProfileScreenState extends State<ProfileScreen> {
       bottomNavigationBar: null,
       body: SingleChildScrollView(
         physics: const ClampingScrollPhysics(),
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Карточка профиля
+            // Profile card
             Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: context.cardShadows,
-              ),
+              width: double.infinity,
               child: Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.symmetric(vertical: 10),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // Фото слева, информация справа
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Фото
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Color(profile.avatarColor),
-                                context.getDarkerShade(profile.avatarColor),
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Color(profile.avatarColor).withOpacity(0.3),
-                                blurRadius: 12,
-                                offset: const Offset(0, 6),
-                              ),
-                            ],
-                          ),
-                          child: profile.photoPath != null && File(profile.photoPath!).existsSync()
-                              ? ClipOval(
-                                  child: Image.file(
-                                    File(profile.photoPath!),
-                                    fit: BoxFit.cover,
-                                    errorBuilder: (context, error, stackTrace) {
-                                      return Center(
-                                        child: Text(
-                                          profile.name[0].toUpperCase(),
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontSize: 28,
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                    // Large circular photo
+                    Container(
+                      width: 100,
+                      height: 100,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Color(profile.avatarColor),
+                            context.getDarkerShade(profile.avatarColor),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        shape: BoxShape.circle
+                      ),
+                      child: profile.photoPath != null && File(profile.photoPath!).existsSync()
+                          ? ClipOval(
+                              child: SizedBox(
+                                width: 100,
+                                height: 100,
+                                child: Image.file(
+                                  File(profile.photoPath!),
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Center(
+                                      child: Text(
+                                        profile.name[0].toUpperCase(),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 48,
+                                          fontWeight: FontWeight.bold,
                                         ),
-                                      );
-                                    },
-                                  ),
-                                )
-                              : Center(
-                                  child: Text(
-                                    profile.name[0].toUpperCase(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 28,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                        ),
-                        const SizedBox(width: 16),
-                        // Информация справа
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              // Имя с бейджиком группы
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      profile.name,
-                                      style: AppTextStyles.heading1(context),
-                                    ),
-                                  ),
-                                  if (profile.groupId != null) ...[
-                                    const SizedBox(width: 8),
-                                    Builder(
-                                      builder: (context) {
-                                        try {
-                                          final groupId = profile.groupId;
-                                          if (groupId != null) {
-                                            final group = _groups.firstWhere((g) => g.id == groupId);
-                                            return Padding(
-                                              padding: const EdgeInsets.only(top: 2),
-                                              child: GroupBadge(
-                                                groupName: group.name,
-                                                primaryColor: _primaryColor,
-                                              ),
-                                            );
-                                          }
-                                          return const SizedBox.shrink();
-                                        } catch (e) {
-                                          return const SizedBox.shrink();
-                                        }
-                                      },
-                                    ),
-                                  ],
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              // Дата рождения
-                              Row(
-                                children: [
-                                  Icon(
-                                    LucideIcons.cake,
-                                    size: 16,
-                                    color: context.iconColor,
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    formatDateFull(profile.birthdate),
-                                    style: AppTextStyles.secondary(context).copyWith(
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              // Возраст
-                              Text(
-                                '$age ${_getAgeText(age, AppLocalizations.of(context))}',
-                                style: AppTextStyles.secondary(context).copyWith(
-                                  fontWeight: FontWeight.w500,
+                                      ),
+                                    );
+                                  },
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                      ],
+                            )
+                          : Center(
+                              child: Text(
+                                profile.name[0].toUpperCase(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 48,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
                     ),
-                    // Заметки снизу
+                    const SizedBox(height: 20),
+                    // Name in bold
+                    Text(
+                      profile.name,
+                      style: AppTextStyles.heading1(context).copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 12),
+                    // Age that will be reached on the birthday
+                    Text(
+                      getBirthdayAgeText(profile.birthdate, context),
+                      style: AppTextStyles.secondary(context).copyWith(
+                        fontWeight: FontWeight.w500,
+                        fontSize: 15,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    // Group badge
+                    if (profile.groupId != null) ...[
+                      const SizedBox(height: 12),
+                      Builder(
+                        builder: (context) {
+                          try {
+                            final groupId = profile.groupId;
+                            if (groupId != null) {
+                              final group = _groups.firstWhere((g) => g.id == groupId);
+                              return GroupBadge(
+                                groupName: group.name,
+                                primaryColor: _primaryColor,
+                              );
+                            }
+                            return const SizedBox.shrink();
+                          } catch (e) {
+                            return const SizedBox.shrink();
+                          }
+                        },
+                      ),
+                    ],
+                    // Notes at the bottom
                     if (profile.notes != null && profile.notes!.isNotEmpty) ...[
                       const SizedBox(height: 20),
                       Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: context.isDarkMode
-                              ? Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5)
-                              : Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.6),
+                          color: Theme.of(context).cardColor,
                           borderRadius: BorderRadius.circular(16),
                         ),
                       child: Text(
@@ -485,33 +362,27 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             const SizedBox(height: 20),
 
-            // Карточка подарков
+            // Gift card
             Container(
-              decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: context.cardShadows,
-              ),
+              width: double.infinity,
               child: Padding(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.symmetric(vertical: 10),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Поле ввода с кнопкой подарка (всегда видно)
-                    _buildGiftInputField(),
+                    // Title
+                    Text(
+                      AppLocalizations.of(context).giftIdeas,
+                      style: AppTextStyles.heading2(context),
+                    ),
 
-                    // Идеи подарков
+                    // Gift ideas
                     if (futureGifts.isNotEmpty) ...[
-                      const SizedBox(height: 28),
-                      Text(
-                        AppLocalizations.of(context).giftIdeas,
-                        style: AppTextStyles.heading2(context),
-                      ),
                       const SizedBox(height: 16),
                       ...futureGifts.map((gift) => _buildGiftCard(gift, true)),
                     ],
 
-                    // Уже подаренные (группированные по годам)
+                    // Already given (grouped by years)
                     if (pastGifts.isNotEmpty) ...[
                       const SizedBox(height: 28),
                       Text(
@@ -519,11 +390,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         style: AppTextStyles.heading2(context),
                       ),
                       const SizedBox(height: 16),
-                      // Отображаем подарки по годам
+                      // Display gifts by years
                       ...sortedYears.expand((year) {
                         final yearGifts = giftsByYear[year]!;
                         return [
-                          // Заголовок года
+                          // Year title
                           Padding(
                             padding: EdgeInsets.only(
                               bottom: 12,
@@ -537,7 +408,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               ),
                             ),
                           ),
-                          // Подарки этого года
+                          // Gifts of this year
                           ...yearGifts.map((gift) => _buildGiftCard(gift, false)),
                         ];
                       }),
@@ -580,274 +451,94 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ],
         ),
       ),
+      floatingActionButton: Material(
+        color: _primaryColor,
+        shape: const CircleBorder(),
+        child: InkWell(
+          onTap: () => _openGiftEditor(null),
+          customBorder: const CircleBorder(),
+          hoverColor: Colors.transparent,
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+          child: Container(
+            width: 60,
+            height: 60,
+            alignment: Alignment.center,
+            child: Icon(LucideIcons.gift, color: Colors.white, size: 24),
+          ),
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 
-  String _getAgeText(int age, AppLocalizations localizations) {
-    if (age % 10 == 1 && age % 100 != 11) {
-      return localizations.year;
-    }
-    if (age % 10 >= 2 && age % 10 <= 4 && (age % 100 < 10 || age % 100 >= 20)) {
-      return localizations.years;
-    }
-    return localizations.yearsOld;
-  }
-
-  Widget _buildGiftInputField() {
-    final isEditing = _editingGiftId != null;
-    
-    return Container(
-      decoration: BoxDecoration(
-        color: context.isDarkMode
-            ? Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5)
-            : Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.6),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(
-                minHeight: 48, // Минимальная высота как у карточек
-                maxHeight: 300, // Максимальная высота
-              ),
-              child: TextField(
-                controller: _giftInputController,
-                maxLines: null,
-                minLines: 1,
-                style: TextStyle(
-                  fontSize: 15,
-                  height: 1.2, // Высота строки для выравнивания с карточками
-                ),
-                decoration: InputDecoration(
-                  filled: false,
-                  fillColor: Colors.transparent,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  hintText: isEditing 
-                      ? 'Edit gift idea...'
-                      : 'Add gift idea...',
-                  hintStyle: TextStyle(
-                    color: Colors.grey[400],
-                    fontSize: 14,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide.none,
-                  ),
-                ),
-                textInputAction: TextInputAction.newline,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: IconButton(
-              icon: Icon(
-                LucideIcons.gift,
-                size: 24,
-                color: _giftInputController.text.trim().isNotEmpty 
-                    ? _primaryColor 
-                    : context.iconColor.withOpacity(0.5),
-              ),
-              onPressed: _saveGiftFromInput,
-              padding: EdgeInsets.only(right: 10),
-              constraints: const BoxConstraints(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   Widget _buildGiftCard(Gift gift, bool isFuture) {
-    final isEditing = _editingGiftId == gift.id;
-    
-    return Dismissible(
-      key: Key(gift.id),
-      direction: DismissDirection.endToStart,
-      background: Container(
+    return GestureDetector(
+      onTap: () => _openGiftEditor(gift),
+      child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         decoration: BoxDecoration(
-          color: Colors.red[400],
+          color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
+          boxShadow: context.cardShadows,
         ),
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Text(
-          AppLocalizations.of(context).delete,
-          style: AppTextStyles.button(context).copyWith(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
-      ),
-      confirmDismiss: (_) async {
-        if (!context.mounted) return false;
-        final localizations = AppLocalizations.of(context);
-        final confirmed = await showModalBottomSheet<bool>(
-          context: context,
-          backgroundColor: Colors.transparent,
-          builder: (context) => Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(20),
-                topRight: Radius.circular(20),
+        child: Stack(
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
               ),
-            ),
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      localizations.deleteGiftConfirm,
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w600,
-                        color: context.textColor,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      localizations.areYouSure,
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: context.secondaryTextColor,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextButton(
-                            onPressed: () => Navigator.pop(context, false),
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ).copyWith(
-                              splashFactory: NoSplash.splashFactory,
-                            ),
-                            child: Text(
-                              localizations.cancel,
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                                color: context.textColor,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: () => Navigator.pop(context, true),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.red,
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                            ).copyWith(
-                              splashFactory: NoSplash.splashFactory,
-                            ),
-                            child: Text(
-                              localizations.delete,
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-        return confirmed ?? false;
-      },
-      onDismissed: (_) => _deleteGift(gift.id),
-      child: GestureDetector(
-        onTap: isFuture ? () => _startEditingGift(gift.id) : null,
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          decoration: BoxDecoration(
-            color: isEditing
-                ? _primaryColor.withOpacity(0.1)
-                : (isFuture 
-                    ? (context.isDarkMode
-                        ? Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.5)
-                        : Theme.of(context).colorScheme.surfaceContainerHighest.withOpacity(0.6))
-                    : (context.isDarkMode
-                        ? Theme.of(context).colorScheme.surfaceContainerHigh.withOpacity(0.4)
-                        : Theme.of(context).colorScheme.surfaceContainerHigh.withOpacity(0.5))),
-            borderRadius: BorderRadius.circular(16),
-            border: isEditing 
-                ? Border.all(color: _primaryColor, width: 2)
-                : null,
-          ),
-          child: Container(
-            constraints: const BoxConstraints(
-              minHeight: 48, // Минимальная высота как у TextField
-            ),
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 14,
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: Text(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
                     gift.idea,
                     style: TextStyle(
-                      decoration: TextDecoration.none,
-                      color: isEditing ? _primaryColor : context.textColor,
+                      color: context.textColor,
                       fontSize: 15,
-                      fontWeight: isEditing ? FontWeight.w600 : FontWeight.normal,
-                      height: 1.2, // Высота строки для выравнивания
+                      fontWeight: FontWeight.w600,
+                      height: 1.2,
                     ),
                   ),
-                ),
-                if (isFuture && !isEditing)
-                  GestureDetector(
+                  if (gift.description != null && gift.description!.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      gift.description!,
+                      style: TextStyle(
+                        color: context.secondaryTextColor,
+                        fontSize: 14,
+                        height: 1.4,
+                      ),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (isFuture)
+              Positioned(
+                right: 16,
+                top: 0,
+                bottom: 0,
+                child: Center(
+                  child: GestureDetector(
                     onTap: () => _toggleGiftStatus(gift.id),
                     child: Container(
-                      margin: const EdgeInsets.only(left: 8),
+                      padding: const EdgeInsets.all(4),
                       child: Icon(
                         LucideIcons.check,
                         color: _primaryColor,
-                        size: 24,
+                        size: 20,
                       ),
                     ),
                   ),
-              ],
-            ),
-          ),
+                ),
+              ),
+          ],
         ),
       ),
     );

@@ -1,7 +1,19 @@
-class Group {
+import 'package:hive/hive.dart';
+
+part 'group.g.dart';
+
+@HiveType(typeId: 2)
+class Group extends HiveObject {
+  @HiveField(0)
   final String id;
+  
+  @HiveField(1)
   final String name;
+  
+  @HiveField(2)
   final DateTime createdAt;
+  
+  @HiveField(3)
   final int order; // Порядок сортировки
 
   Group({

@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../models/profile.dart';
-import '../utils/color_utils.dart';
 import '../utils/date_utils.dart';
 import '../screens/profile_screen.dart';
 import '../services/notification_service.dart';
@@ -11,12 +10,12 @@ import '../theme/theme_helper.dart';
 import '../localization/app_localizations.dart';
 import 'group_badge.dart';
 
-/// Карточка профиля для отображения в списке
+/// Profile card for displaying in the list
 class ProfileCard extends StatelessWidget {
   final Profile profile;
   final Color primaryColor;
   final Future<void> Function() onProfileUpdated;
-  final String? groupName; // Название группы для отображения
+  final String? groupName; // Name of the group for displaying
 
   const ProfileCard({
     super.key,
@@ -53,35 +52,29 @@ class ProfileCard extends StatelessWidget {
               ),
             );
             await onProfileUpdated();
-            // Обновляем уведомления после возврата
+            // Update notifications after returning
             final notificationService = NotificationService();
             await notificationService.scheduleAllNotifications();
           },
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // Аватар
+              // Avatar
               Container(
-                width: 56,
-                height: 56,
+                width: 64,
+                height: 64,
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
                       Color(profile.avatarColor),
-                      getDarkerShade(profile.avatarColor),
+                      context.getDarkerShade(profile.avatarColor),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Color(profile.avatarColor).withOpacity(0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+                  shape: BoxShape.circle
                 ),
                 child: profile.photoPath != null && File(profile.photoPath!).existsSync()
                     ? ClipOval(
@@ -94,7 +87,7 @@ class ProfileCard extends StatelessWidget {
                                 profile.name[0].toUpperCase(),
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontSize: 24,
+                                  fontSize: 28,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -114,76 +107,51 @@ class ProfileCard extends StatelessWidget {
                       ),
               ),
               const SizedBox(width: 16),
-              // Информация
+              // Information
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            profile.name,
-                            style: AppTextStyles.heading2(context).copyWith(
-                              fontSize: 18,
-                            ),
-                          ),
-                        ),
-                        if (profile.groupId != null && groupName != null) ...[
-                          const SizedBox(width: 8),
-                          GroupBadge(
-                            groupName: groupName!,
-                            primaryColor: primaryColor,
-                          ),
-                        ],
-                      ],
+                    Text(
+                      profile.name,
+                      style: AppTextStyles.heading2(context).copyWith(
+                        fontSize: 16,
+                      ),
                     ),
                     const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Icon(
-                          LucideIcons.cake,
-                          size: 16,
-                          color: context.textColor,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          formatDateShort(profile.birthdate),
-                          style: AppTextStyles.secondary(context).copyWith(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: context.textColor,
-                          ),
-                        ),
-                      ],
+                    Text(
+                      formatDateShort(profile.birthdate, Localizations.localeOf(context)),
+                      style: AppTextStyles.secondary(context).copyWith(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                        color: context.textColor,
+                      ),
                     ),
-                    if (daysUntil <= 30 && daysUntil >= 0) ...[
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: primaryColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          daysUntil == 0
-                              ? '🎉 ${AppLocalizations.of(context).today}'
-                              : '${AppLocalizations.of(context).daysUntil} $daysUntil ${_getDaysText(daysUntil, AppLocalizations.of(context))}',
-                          style: AppTextStyles.caption(context).copyWith(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: primaryColor,
-                          ),
-                        ),
+                    if (profile.groupId != null && groupName != null) ...[
+                      const SizedBox(height: 6),
+                      GroupBadge(
+                        groupName: groupName!,
+                        primaryColor: primaryColor,
                       ),
                     ],
                   ],
                 ),
               ),
+              // Counter of days in the center
+              if (daysUntil <= 30 && daysUntil >= 0) ...[
+                const SizedBox(width: 12),
+                Text(
+                  daysUntil == 0
+                      ? '🎉 ${AppLocalizations.of(context).today}'
+                      : '$daysUntil ${_getDaysText(daysUntil, AppLocalizations.of(context))}',
+                  style: AppTextStyles.caption(context).copyWith(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: primaryColor,
+                  ),
+                ),
+              ],
             ],
           ),
         ),

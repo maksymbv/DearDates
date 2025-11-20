@@ -6,7 +6,7 @@ import '../theme/app_text_styles.dart';
 import '../theme/theme_helper.dart';
 import '../localization/app_localizations.dart';
 
-/// Bottom sheet для выбора группы
+/// Bottom sheet for selecting a group
 class GroupSelector {
   static Future<String?> show(
     BuildContext context, {
@@ -72,7 +72,7 @@ class _GroupSelectorContentState extends State<_GroupSelectorContent> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Заголовок
+            // Title
             Container(
               padding: const EdgeInsets.all(20),
               child: Row(
@@ -102,7 +102,7 @@ class _GroupSelectorContentState extends State<_GroupSelectorContent> {
                 child: CircularProgressIndicator(),
               )
             else
-              // Список групп
+              // List of groups
               Flexible(
                 child: ListView(
                   shrinkWrap: true,
@@ -134,7 +134,7 @@ class _GroupSelectorContentState extends State<_GroupSelectorContent> {
                       ),
                     ),
                     
-                    // Список групп
+                    // List of groups
                     ..._groups.map((group) {
                       final isSelected = widget.selectedGroupId == group.id;
                       return ListTile(

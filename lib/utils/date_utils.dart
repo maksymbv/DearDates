@@ -1,17 +1,37 @@
 import 'package:intl/intl.dart';
+import 'package:flutter/material.dart';
+import '../localization/app_localizations.dart';
 
-String formatDate(DateTime date) {
-  return DateFormat('dd.MM.yyyy').format(date);
+String formatDate(DateTime date, [Locale? locale]) {
+  final localeString = _getLocaleString(locale);
+  return DateFormat('dd.MM.yyyy', localeString).format(date);
 }
 
-String formatDateShort(DateTime date) {
+String formatDateShort(DateTime date, [Locale? locale]) {
   // Форматирование в формате "1 January" (день + месяц)
-  return DateFormat('d MMMM', 'en_US').format(date);
+  final localeString = _getLocaleString(locale);
+  return DateFormat('d MMMM', localeString).format(date);
 }
 
-String formatDateFull(DateTime date) {
+String formatDateFull(DateTime date, [Locale? locale]) {
   // Форматирование в формате "1 January 2005" (день + месяц + год)
-  return DateFormat('d MMMM yyyy', 'en_US').format(date);
+  final localeString = _getLocaleString(locale);
+  return DateFormat('d MMMM yyyy', localeString).format(date);
+}
+
+String _getLocaleString(Locale? locale) {
+  if (locale == null) return 'en_US';
+  
+  // Преобразуем Locale в строку для intl
+  switch (locale.languageCode) {
+    case 'ru':
+      return 'ru_RU';
+    case 'uk':
+      return 'uk_UA';
+    case 'en':
+    default:
+      return 'en_US';
+  }
 }
 
 int getAge(DateTime birthdate) {
@@ -73,5 +93,68 @@ int daysUntilBirthday(DateTime birthdate) {
   final now = DateTime.now();
   final difference = nextBirthday.difference(now);
   return difference.inDays;
+}
+
+/// Возвращает строку с возрастом, который исполнится на день рождения
+String getBirthdayAgeText(DateTime birthdate, BuildContext context) {
+  final localizations = AppLocalizations.of(context);
+  final currentAge = getAge(birthdate);
+  final nextBirthdayAge = currentAge + 1;
+  final locale = Localizations.localeOf(context);
+  final birthdayDate = formatDateShort(birthdate, locale);
+  
+  // Используем локализованные строки
+  final turnsText = _getTurnsText(localizations);
+  final ageText = _getAgeText(nextBirthdayAge, localizations);
+  return '$turnsText $nextBirthdayAge $ageText $birthdayDate';
+}
+
+String _getAgeText(int age, AppLocalizations localizations) {
+  final langCode = localizations.locale.languageCode;
+  
+  if (langCode == 'ru') {
+    // Русский: 1, 21, 31... → "год"; 2-4, 22-24, 32-34... → "года"; остальные → "лет"
+    final lastDigit = age % 10;
+    final lastTwoDigits = age % 100;
+    
+    if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
+      return 'лет';
+    } else if (lastDigit == 1) {
+      return 'год';
+    } else if (lastDigit >= 2 && lastDigit <= 4) {
+      return 'года';
+    } else {
+      return 'лет';
+    }
+  } else if (langCode == 'uk') {
+    // Украинский: 1, 21, 31... → "рік"; 2-4, 22-24, 32-34... → "роки"; остальные → "років"
+    final lastDigit = age % 10;
+    final lastTwoDigits = age % 100;
+    
+    if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
+      return 'років';
+    } else if (lastDigit == 1) {
+      return 'рік';
+    } else if (lastDigit >= 2 && lastDigit <= 4) {
+      return 'роки';
+    } else {
+      return 'років';
+    }
+  } else {
+    // Английский
+    return age == 1 ? localizations.year : localizations.years;
+  }
+}
+
+String _getTurnsText(AppLocalizations localizations) {
+  // Для разных языков может быть разный текст
+  final langCode = localizations.locale.languageCode;
+  if (langCode == 'ru') {
+    return 'Исполнится';
+  } else if (langCode == 'uk') {
+    return 'Виповниться';
+  } else {
+    return 'Turns';
+  }
 }
 

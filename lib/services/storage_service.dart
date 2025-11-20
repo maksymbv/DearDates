@@ -1,7 +1,6 @@
-import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../models/profile.dart';
 import 'notification_service.dart';
 import 'photo_service.dart';
@@ -12,7 +11,7 @@ class StorageService {
   factory StorageService() => _instance;
   StorageService._internal();
   
-  static const String _profilesKey = 'profiles';
+  Box<Profile> get _profilesBox => Hive.box<Profile>('profiles');
 
   // Генерация случайного пастельного цвета
   static int generatePastelColor() {
@@ -35,50 +34,36 @@ class StorageService {
   }
 
   Future<List<Profile>> loadProfiles() async {
-    final prefs = await SharedPreferences.getInstance();
-    final profilesJson = prefs.getStringList(_profilesKey);
+    final profiles = _profilesBox.values.toList();
     
-    if (profilesJson == null || profilesJson.isEmpty) {
-      return [];
-    }
-
-    final profiles = profilesJson
-        .map((json) {
-          final data = jsonDecode(json) as Map<String, dynamic>;
-          // Если у профиля нет avatarColor, генерируем случайный
-          if (!data.containsKey('avatarColor')) {
-            data['avatarColor'] = generatePastelColor();
-          }
-          return Profile.fromJson(data);
-        })
-        .toList();
-
-    // Сохраняем обновленные профили, если были изменения
-    final needsSave = profilesJson.any((json) {
-      final data = jsonDecode(json) as Map<String, dynamic>;
-      return !data.containsKey('avatarColor');
-    });
-
+    // Если у профиля нет avatarColor, генерируем случайный
+    final needsSave = profiles.any((profile) => profile.avatarColor == 0);
+    
     if (needsSave) {
-      await saveProfiles(profiles);
+      for (var profile in profiles) {
+        if (profile.avatarColor == 0) {
+          final updatedProfile = profile.copyWith(avatarColor: generatePastelColor());
+          await _profilesBox.put(profile.id, updatedProfile);
+        }
+      }
+      // Перезагружаем после обновления
+      return _profilesBox.values.toList();
     }
 
     return profiles;
   }
 
   Future<void> saveProfiles(List<Profile> profiles) async {
-    final prefs = await SharedPreferences.getInstance();
-    final profilesJson = profiles
-        .map((profile) => jsonEncode(profile.toJson()))
-        .toList();
-    
-    await prefs.setStringList(_profilesKey, profilesJson);
+    // Очищаем бокс и сохраняем все профили
+    await _profilesBox.clear();
+    final Map<String, Profile> profilesMap = {
+      for (var profile in profiles) profile.id: profile
+    };
+    await _profilesBox.putAll(profilesMap);
   }
 
   Future<void> addProfile(Profile profile) async {
-    final profiles = await loadProfiles();
-    profiles.add(profile);
-    await saveProfiles(profiles);
+    await _profilesBox.put(profile.id, profile);
     
     // Планируем уведомления для нового профиля
     try {
@@ -92,20 +77,16 @@ class StorageService {
   }
 
   Future<void> updateProfile(Profile profile) async {
-    final profiles = await loadProfiles();
-    final index = profiles.indexWhere((p) => p.id == profile.id);
+    final oldProfile = _profilesBox.get(profile.id);
     
-    if (index != -1) {
-      final oldProfile = profiles[index];
-      
+    if (oldProfile != null) {
       // Удаляем старое фото, если оно было изменено или удалено
       if (oldProfile.photoPath != null && oldProfile.photoPath != profile.photoPath) {
         final photoService = PhotoService();
         await photoService.deletePhoto(oldProfile.photoPath);
       }
       
-      profiles[index] = profile;
-      await saveProfiles(profiles);
+      await _profilesBox.put(profile.id, profile);
       
       // Обновляем уведомления для профиля
       try {
@@ -125,11 +106,11 @@ class StorageService {
   }
 
   Future<void> deleteProfile(String profileId) async {
-    final profiles = await loadProfiles();
-    final profileToDelete = profiles.firstWhere(
-      (p) => p.id == profileId,
-      orElse: () => throw Exception('Profile not found'),
-    );
+    final profileToDelete = _profilesBox.get(profileId);
+    
+    if (profileToDelete == null) {
+      throw Exception('Profile not found');
+    }
     
     // Удаляем фото профиля, если оно есть
     if (profileToDelete.photoPath != null) {
@@ -137,8 +118,7 @@ class StorageService {
       await photoService.deletePhoto(profileToDelete.photoPath);
     }
     
-    profiles.removeWhere((p) => p.id == profileId);
-    await saveProfiles(profiles);
+    await _profilesBox.delete(profileId);
     
     // Отменяем уведомления для удаленного профиля
     final notificationService = NotificationService();
@@ -147,41 +127,34 @@ class StorageService {
   }
 
   Future<void> addGift(String profileId, Gift gift) async {
-    final profiles = await loadProfiles();
-    final profileIndex = profiles.indexWhere((p) => p.id == profileId);
+    final profile = _profilesBox.get(profileId);
     
-    if (profileIndex != -1) {
-      final profile = profiles[profileIndex];
+    if (profile != null) {
       final updatedGifts = List<Gift>.from(profile.gifts)..add(gift);
-      profiles[profileIndex] = profile.copyWith(gifts: updatedGifts);
-      await saveProfiles(profiles);
+      final updatedProfile = profile.copyWith(gifts: updatedGifts);
+      await _profilesBox.put(profileId, updatedProfile);
     }
   }
 
   Future<void> updateGift(String profileId, Gift gift) async {
-    final profiles = await loadProfiles();
-    final profileIndex = profiles.indexWhere((p) => p.id == profileId);
+    final profile = _profilesBox.get(profileId);
     
-    if (profileIndex != -1) {
-      final profile = profiles[profileIndex];
+    if (profile != null) {
       final updatedGifts = profile.gifts.map((g) {
         return g.id == gift.id ? gift : g;
       }).toList();
-      profiles[profileIndex] = profile.copyWith(gifts: updatedGifts);
-      await saveProfiles(profiles);
+      final updatedProfile = profile.copyWith(gifts: updatedGifts);
+      await _profilesBox.put(profileId, updatedProfile);
     }
   }
 
   Future<void> deleteGift(String profileId, String giftId) async {
-    final profiles = await loadProfiles();
-    final profileIndex = profiles.indexWhere((p) => p.id == profileId);
+    final profile = _profilesBox.get(profileId);
     
-    if (profileIndex != -1) {
-      final profile = profiles[profileIndex];
+    if (profile != null) {
       final updatedGifts = profile.gifts.where((g) => g.id != giftId).toList();
-      profiles[profileIndex] = profile.copyWith(gifts: updatedGifts);
-      await saveProfiles(profiles);
+      final updatedProfile = profile.copyWith(gifts: updatedGifts);
+      await _profilesBox.put(profileId, updatedProfile);
     }
   }
 }
-
