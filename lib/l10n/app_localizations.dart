@@ -75,6 +75,10 @@ class AppLocalizations {
   String get reminderDaysTitle => _getString('reminderDaysTitle');
   String get reminderDaysDescription => _getString('reminderDaysDescription');
   String get birthdayNotificationInfo => _getString('birthdayNotificationInfo');
+  String get useDefaultNotifications => _getString('useDefaultNotifications');
+  String get usingDefaultNotifications => _getString('usingDefaultNotifications');
+  String get currentSettings => _getString('currentSettings');
+  String get enableNotifications => _getString('enableNotifications');
 
   // Профили
   String get addProfile => _getString('addProfile');
@@ -206,12 +210,16 @@ class AppLocalizations {
       'daysBefore': 'Before',
       'day': 'day',
       'days': 'days',
-      'notificationSettings': 'Notification Settings',
+      'notificationSettings': 'Notifications',
       'reminderDaysTitle': 'Reminder Days',
       'reminderDaysDescription':
           'Select how many days before the birthday you want to receive notifications',
       'birthdayNotificationInfo':
           'You will also receive a notification on the birthday itself',
+      'useDefaultNotifications': 'Use default notifications',
+      'usingDefaultNotifications': 'Using global notification settings',
+      'currentSettings': 'Current settings',
+      'enableNotifications': 'Notifications',
       'addProfile': 'Add Profile',
       'editProfile': 'Edit Profile',
       'deleteProfile': 'Delete Profile',
@@ -313,12 +321,16 @@ class AppLocalizations {
       'daysBefore': 'За',
       'day': 'день',
       'days': 'дней',
-      'notificationSettings': 'Настройки уведомлений',
+      'notificationSettings': 'Уведомления',
       'reminderDaysTitle': 'Дни напоминания',
       'reminderDaysDescription':
           'Выберите за сколько дней до дня рождения вы хотите получать уведомления',
       'birthdayNotificationInfo':
           'Вы также получите уведомление в сам день рождения',
+      'useDefaultNotifications': 'Использовать стандартные уведомления',
+      'usingDefaultNotifications': 'Используются глобальные настройки уведомлений',
+      'currentSettings': 'Текущие настройки',
+      'enableNotifications': 'Уведомления',
       'addProfile': 'Добавить профиль',
       'editProfile': 'Редактировать профиль',
       'deleteProfile': 'Удалить профиль',
@@ -421,12 +433,16 @@ class AppLocalizations {
       'daysBefore': 'За',
       'day': 'день',
       'days': 'днів',
-      'notificationSettings': 'Налаштування сповіщень',
+      'notificationSettings': 'Сповіщення',
       'reminderDaysTitle': 'Дні нагадування',
       'reminderDaysDescription':
           'Виберіть за скільки днів до дня народження ви хочете отримувати сповіщення',
       'birthdayNotificationInfo':
           'Ви також отримаєте сповіщення в сам день народження',
+      'useDefaultNotifications': 'Використовувати стандартні сповіщення',
+      'usingDefaultNotifications': 'Використовуються глобальні налаштування сповіщень',
+      'currentSettings': 'Поточні налаштування',
+      'enableNotifications': 'Сповіщення',
       'addProfile': 'Додати профіль',
       'editProfile': 'Редагувати профіль',
       'deleteProfile': 'Видалити профіль',

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../localization/app_localizations.dart';
+import '../l10n/app_localizations.dart';
 import 'app_dialog.dart';
 
 /// Create group dialog

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../theme/app_button_styles.dart';
-import '../theme/app_text_styles.dart';
-import '../theme/theme_helper.dart';
+import '../themes/app_button_styles.dart';
+import '../themes/app_text_styles.dart';
+import '../themes/theme_helper.dart';
 
 /// Widget for the dialog with a text field
 class _TextFieldDialogWidget extends StatefulWidget {

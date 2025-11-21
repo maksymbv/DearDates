@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import '../services/notification_service.dart';
-import '../services/theme_service.dart';
-import '../theme/app_text_styles.dart';
-import '../theme/theme_helper.dart';
-import '../localization/app_localizations.dart';
+import '../../services/notification_service.dart';
+import '../../themes/app_text_styles.dart';
+import '../../themes/theme_helper.dart';
+import '../../l10n/app_localizations.dart';
+import '../../utils/date_utils.dart';
+import '../../widgets/app_card.dart';
 
 class NotificationSettingsScreen extends StatefulWidget {
   const NotificationSettingsScreen({super.key});
@@ -15,13 +16,12 @@ class NotificationSettingsScreen extends StatefulWidget {
 
 class _NotificationSettingsScreenState extends State<NotificationSettingsScreen> {
   final NotificationService _notificationService = NotificationService();
-  final ThemeService _themeService = ThemeService();
   List<int> _reminderDays = [];
   bool _isLoading = true;
 
   final List<int> _availableDays = [1, 3, 7, 14, 30];
   
-  Color get _primaryColor => Color(_themeService.primaryColor);
+  Color _getPrimaryColor(BuildContext context) => Theme.of(context).colorScheme.primary;
 
   @override
   void initState() {
@@ -80,6 +80,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -96,30 +97,21 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                   const SizedBox(height: 24),
                   ..._availableDays.map((day) {
                     final isSelected = _reminderDays.contains(day);
-                    return Container(
+                    return AppCard(
                       margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isSelected
-                              ? _primaryColor
-                              : Theme.of(context).dividerColor,
-                          width: isSelected ? 2 : 1,
-                        ),
-                      ),
+                      padding: EdgeInsets.zero,
                       child: ListTile(
                         title: Text(
-                          _getDayText(day, localizations),
+                          '${localizations.daysBefore} $day ${pluralDays(day, localizations)}',
                           style: AppTextStyles.body(context).copyWith(
                             fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                            color: isSelected ? _primaryColor : context.textColor,
+                            color: isSelected ? _getPrimaryColor(context) : context.textColor,
                           ),
                         ),
                         trailing: Checkbox(
                           value: isSelected,
                           onChanged: (_) => _toggleDay(day),
-                          activeColor: _primaryColor,
+                          activeColor: _getPrimaryColor(context),
                         ),
                         onTap: () => _toggleDay(day),
                         shape: RoundedRectangleBorder(
@@ -129,16 +121,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                     );
                   }),
                   const SizedBox(height: 24),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).cardColor,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: Theme.of(context).dividerColor,
-                        width: 1,
-                      ),
-                    ),
+                  AppCard(
                     child: Row(
                       children: [
                         Icon(
@@ -160,13 +143,6 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
               ),
             ),
     );
-  }
-
-  String _getDayText(int day, AppLocalizations localizations) {
-    if (day == 1) {
-      return '${localizations.daysBefore} 1 ${localizations.day}';
-    }
-    return '${localizations.daysBefore} $day ${localizations.days}';
   }
 }
 

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../theme/app_text_styles.dart';
+import '../themes/app_text_styles.dart';
 
 /// Badge for displaying the group in the profile card
 class GroupBadge extends StatelessWidget {

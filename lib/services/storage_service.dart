@@ -68,8 +68,8 @@ class StorageService {
     // Планируем уведомления для нового профиля
     try {
       final notificationService = NotificationService();
-      final reminderDays = await notificationService.getReminderDays();
-      await notificationService.scheduleProfile(profile, reminderDays);
+      // scheduleProfile автоматически использует настройки профиля
+      await notificationService.scheduleProfile(profile);
     } catch (e) {
       // Игнорируем ошибки уведомлений, чтобы не блокировать сохранение профиля
       debugPrint('Ошибка при планировании уведомлений: $e');
@@ -91,13 +91,15 @@ class StorageService {
       // Обновляем уведомления для профиля
       try {
         final notificationService = NotificationService();
+        
+        // Получаем глобальные дни для отмены старых уведомлений
         final reminderDays = await notificationService.getReminderDays();
         
         // Отменяем старые уведомления
         await notificationService.cancelProfileNotifications(oldProfile.id, reminderDays);
         
-        // Планируем новые уведомления
-        await notificationService.scheduleProfile(profile, reminderDays);
+        // Планируем новые уведомления (использует глобальные настройки и проверяет notificationsEnabled)
+        await notificationService.scheduleProfile(profile);
       } catch (e) {
         // Игнорируем ошибки уведомлений, чтобы не блокировать сохранение профиля
         debugPrint('Ошибка при обновлении уведомлений: $e');

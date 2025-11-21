@@ -1,13 +1,11 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../models/profile.dart';
-import '../utils/date_utils.dart';
-import '../screens/profile_screen.dart';
-import '../services/notification_service.dart';
-import '../theme/app_text_styles.dart';
-import '../theme/theme_helper.dart';
-import '../localization/app_localizations.dart';
+import '../utils/date_utils.dart' show daysUntilBirthday, pluralDays, formatDateShort;
+import '../screens/profile/profile_screen.dart';
+import '../themes/app_text_styles.dart';
+import '../themes/theme_helper.dart';
+import '../l10n/app_localizations.dart';
+import 'avatar.dart';
 import 'group_badge.dart';
 
 /// Profile card for displaying in the list
@@ -52,9 +50,7 @@ class ProfileCard extends StatelessWidget {
               ),
             );
             await onProfileUpdated();
-            // Update notifications after returning
-            final notificationService = NotificationService();
-            await notificationService.scheduleAllNotifications();
+            // Уведомления автоматически обновляются в StorageService.updateProfile()
           },
         child: Padding(
           padding: const EdgeInsets.all(20),
@@ -62,49 +58,12 @@ class ProfileCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               // Avatar
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      Color(profile.avatarColor),
-                      context.getDarkerShade(profile.avatarColor),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  shape: BoxShape.circle
-                ),
-                child: profile.photoPath != null && File(profile.photoPath!).existsSync()
-                    ? ClipOval(
-                        child: Image.file(
-                          File(profile.photoPath!),
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Center(
-                              child: Text(
-                                profile.name[0].toUpperCase(),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 28,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      )
-                    : Center(
-                        child: Text(
-                          profile.name[0].toUpperCase(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
+              AvatarWidget(
+                photoPath: profile.photoPath,
+                avatarColor: profile.avatarColor,
+                name: profile.name,
+                size: 64,
+                fontSize: 28,
               ),
               const SizedBox(width: 16),
               // Information
@@ -144,7 +103,7 @@ class ProfileCard extends StatelessWidget {
                 Text(
                   daysUntil == 0
                       ? '🎉 ${AppLocalizations.of(context).today}'
-                      : '$daysUntil ${_getDaysText(daysUntil, AppLocalizations.of(context))}',
+                      : '$daysUntil ${pluralDays(daysUntil, AppLocalizations.of(context))}',
                   style: AppTextStyles.caption(context).copyWith(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -158,21 +117,6 @@ class ProfileCard extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  String _getDaysText(int days, AppLocalizations localizations) {
-    final lastDigit = days % 10;
-    final lastTwoDigits = days % 100;
-
-    if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
-      return localizations.days;
-    } else if (lastDigit == 1) {
-      return localizations.day;
-    } else if (lastDigit >= 2 && lastDigit <= 4) {
-      return localizations.days;
-    } else {
-      return localizations.days;
-    }
   }
 }
 

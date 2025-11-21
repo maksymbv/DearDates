@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import '../services/notification_service.dart';
-import '../services/theme_service.dart';
-import '../localization/app_localizations.dart';
-import '../theme/app_text_styles.dart';
-import '../theme/theme_helper.dart';
+import '../../services/notification_service.dart';
+import '../../services/theme_service.dart';
+import '../../l10n/app_localizations.dart';
+import '../../themes/app_text_styles.dart';
+import '../../themes/theme_helper.dart';
+import '../../utils/date_utils.dart';
+import '../../widgets/app_card.dart';
 import 'notification_settings_screen.dart';
 import 'theme_settings_screen.dart';
 
@@ -26,23 +28,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    _themeService.addListener(_onThemeChanged);
     _loadSettings();
-  }
-  
-  @override
-  void dispose() {
-    _themeService.removeListener(_onThemeChanged);
-    super.dispose();
-  }
-  
-  void _onThemeChanged() {
-    if (mounted) {
-      setState(() {
-        _currentTheme = _themeService.currentTheme;
-        _isDarkMode = _themeService.isDarkMode;
-      });
-    }
   }
 
   Future<void> _loadSettings() async {
@@ -72,20 +58,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     _reminderDays.sort();
     if (_reminderDays.length == 1) {
-      return '${localizations.daysBefore} ${_reminderDays.first} ${_getDayText(_reminderDays.first, localizations)}';
+      return '${localizations.daysBefore} ${_reminderDays.first} ${pluralDays(_reminderDays.first, localizations)}';
     }
     final daysList = _reminderDays.map((d) => '$d').join(', ');
     return '${localizations.daysBefore} $daysList ${localizations.days}';
-  }
-
-  String _getDayText(int day, AppLocalizations localizations) {
-    if (day == 1) {
-      return localizations.day;
-    }
-    if (day >= 2 && day <= 4) {
-      return localizations.days;
-    }
-    return localizations.days;
   }
 
   @override
@@ -120,22 +96,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
               children: [
                 Expanded(
                   child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
                     padding: const EdgeInsets.all(20),
                     child: Column(
                       children: [
                         // Блок уведомлений
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).cardColor,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.04),
-                                blurRadius: 15,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
+                        AppCard(
+                          padding: EdgeInsets.zero,
                           child: ListTile(
                             title: Row(
                               children: [
@@ -172,18 +139,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         const SizedBox(height: 16),
                         // Блок темы
-                        Container(
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).cardColor,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.04),
-                                blurRadius: 15,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
+                        AppCard(
+                          padding: EdgeInsets.zero,
                           child: ListTile(
                             title: Row(
                               children: [

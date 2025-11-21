@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/group.dart';
-import '../localization/app_localizations.dart';
-import '../theme/app_button_styles.dart';
+import '../l10n/app_localizations.dart';
+import '../themes/app_button_styles.dart';
 import 'app_dialog.dart';
 
 /// Modal window for the group menu (edit/delete)

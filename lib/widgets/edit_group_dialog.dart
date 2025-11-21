@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/group.dart';
-import '../localization/app_localizations.dart';
+import '../l10n/app_localizations.dart';
 import 'app_dialog.dart';
 
 /// Edit group dialog

@@ -1,16 +1,15 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import '../models/profile.dart';
-import '../models/group.dart';
-import '../services/storage_service.dart';
-import '../services/theme_service.dart';
-import '../services/group_service.dart';
-import '../utils/date_utils.dart';
-import '../widgets/group_badge.dart';
-import '../theme/app_text_styles.dart';
-import '../theme/theme_helper.dart';
-import '../localization/app_localizations.dart';
+import '../../models/profile.dart';
+import '../../models/group.dart';
+import '../../services/storage_service.dart';
+import '../../services/group_service.dart';
+import '../../utils/date_utils.dart';
+import '../../widgets/group_badge.dart';
+import '../../themes/app_text_styles.dart';
+import '../../themes/theme_helper.dart';
+import '../../l10n/app_localizations.dart';
+import '../../widgets/avatar.dart';
 import 'add_profile_screen.dart';
 import 'edit_gift_screen.dart';
 
@@ -25,13 +24,12 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   final StorageService _storageService = StorageService();
-  final ThemeService _themeService = ThemeService();
   final GroupService _groupService = GroupService();
   Profile? _profile;
   List<Group> _groups = [];
   bool _isLoading = true;
   
-  Color get _primaryColor => Color(_themeService.primaryColor);
+  Color _getPrimaryColor(BuildContext context) => Theme.of(context).colorScheme.primary;
 
   @override
   void initState() {
@@ -104,9 +102,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final isNowGiven = !gift.isGiven;
     final currentYear = DateTime.now().year;
     
+    // Логика года:
+    // - Если становится подаренным И года еще нет → устанавливаем текущий год
+    // - В остальных случаях сохраняем существующий год (не сбрасываем)
     final updatedGift = gift.copyWith(
       isGiven: isNowGiven,
-      givenYear: isNowGiven ? currentYear : null, // Save the current year when marking as given
+      givenYear: isNowGiven && gift.givenYear == null 
+          ? currentYear 
+          : gift.givenYear,
     );
     await _storageService.updateGift(_profile!.id, updatedGift);
     await _loadProfile();
@@ -118,7 +121,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       return Scaffold(
         body: Center(
           child: CircularProgressIndicator(
-            color: _primaryColor.withOpacity(0.7),
+            color: _getPrimaryColor(context).withOpacity(0.7),
           ),
         ),
       );
@@ -232,7 +235,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       bottomNavigationBar: null,
       body: SingleChildScrollView(
-        physics: const ClampingScrollPhysics(),
+        physics: const BouncingScrollPhysics(),
         padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -246,54 +249,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     // Large circular photo
-                    Container(
-                      width: 100,
-                      height: 100,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            Color(profile.avatarColor),
-                            context.getDarkerShade(profile.avatarColor),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        shape: BoxShape.circle
-                      ),
-                      child: profile.photoPath != null && File(profile.photoPath!).existsSync()
-                          ? ClipOval(
-                              child: SizedBox(
-                                width: 100,
-                                height: 100,
-                                child: Image.file(
-                                  File(profile.photoPath!),
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) {
-                                    return Center(
-                                      child: Text(
-                                        profile.name[0].toUpperCase(),
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 48,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            )
-                          : Center(
-                              child: Text(
-                                profile.name[0].toUpperCase(),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 48,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
+                    AvatarWidget(
+                      photoPath: profile.photoPath,
+                      avatarColor: profile.avatarColor,
+                      name: profile.name,
+                      size: 100,
+                      fontSize: 48,
                     ),
                     const SizedBox(height: 20),
                     // Name in bold
@@ -325,7 +286,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               final group = _groups.firstWhere((g) => g.id == groupId);
                               return GroupBadge(
                                 groupName: group.name,
-                                primaryColor: _primaryColor,
+                                primaryColor: _getPrimaryColor(context),
                               );
                             }
                             return const SizedBox.shrink();
@@ -348,7 +309,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       child: Text(
                         profile.notes!,
                         style: AppTextStyles.body(context).copyWith(
-                          color: context.secondaryTextColor,
+                          color: context.textColor,
                           height: 1.5,
                         ),
                         textAlign: TextAlign.left,
@@ -452,7 +413,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       ),
       floatingActionButton: Material(
-        color: _primaryColor,
+        color: _getPrimaryColor(context),
         shape: const CircleBorder(),
         child: InkWell(
           onTap: () => _openGiftEditor(null),
@@ -474,71 +435,83 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
 
   Widget _buildGiftCard(Gift gift, bool isFuture) {
-    return GestureDetector(
-      onTap: () => _openGiftEditor(gift),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
+    final primaryColor = _getPrimaryColor(context);
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: context.cardShadows,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _openGiftEditor(gift),
           borderRadius: BorderRadius.circular(16),
-          boxShadow: context.cardShadows,
-        ),
-        child: Stack(
-          children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 14,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    gift.idea,
-                    style: TextStyle(
-                      color: context.textColor,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w600,
-                      height: 1.2,
-                    ),
-                  ),
-                  if (gift.description != null && gift.description!.isNotEmpty) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      gift.description!,
-                      style: TextStyle(
-                        color: context.secondaryTextColor,
-                        fontSize: 14,
-                        height: 1.4,
-                      ),
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            if (isFuture)
-              Positioned(
-                right: 16,
-                top: 0,
-                bottom: 0,
-                child: Center(
-                  child: GestureDetector(
-                    onTap: () => _toggleGiftStatus(gift.id),
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      child: Icon(
-                        LucideIcons.check,
-                        color: _primaryColor,
-                        size: 20,
+          hoverColor: Colors.transparent,
+          splashColor: Colors.transparent,
+          highlightColor: Colors.transparent,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            child: Row(
+              children: [
+                // Checkbox circle
+                GestureDetector(
+                  onTap: () => _toggleGiftStatus(gift.id),
+                  child: Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: gift.isGiven ? primaryColor : Colors.transparent,
+                      border: Border.all(
+                        color: gift.isGiven ? primaryColor : context.secondaryTextColor,
+                        width: 2,
                       ),
                     ),
+                    child: gift.isGiven
+                        ? Icon(
+                            LucideIcons.check,
+                            size: 16,
+                            color: Colors.white,
+                          )
+                        : null,
                   ),
                 ),
-              ),
-          ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        gift.idea,
+                        style: TextStyle(
+                          color: gift.isGiven ? context.secondaryTextColor : context.textColor,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          height: 1.2,
+                        ),
+                      ),
+                      if (gift.description != null && gift.description!.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          gift.description!,
+                          style: TextStyle(
+                            color: context.secondaryTextColor,
+                            fontSize: 14,
+                            height: 1.4,
+                          ),
+                          maxLines: 3,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

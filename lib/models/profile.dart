@@ -31,6 +31,9 @@ class Profile extends HiveObject {
   @HiveField(8)
   final String? groupId; // ID группы, к которой принадлежит профиль
 
+  @HiveField(9)
+  final bool notificationsEnabled; // Включены ли уведомления для этого профиля
+
   Profile({
     required this.id,
     required this.name,
@@ -41,6 +44,7 @@ class Profile extends HiveObject {
     required this.avatarColor,
     this.photoPath,
     this.groupId,
+    this.notificationsEnabled = true, // По умолчанию уведомления включены
   });
 
   Map<String, dynamic> toJson() {
@@ -54,6 +58,7 @@ class Profile extends HiveObject {
       'avatarColor': avatarColor,
       'photoPath': photoPath,
       'groupId': groupId,
+      'notificationsEnabled': notificationsEnabled,
     };
   }
 
@@ -71,6 +76,7 @@ class Profile extends HiveObject {
       avatarColor: json['avatarColor'] as int? ?? 0xFFD68A9E, // По умолчанию розовый для старых профилей
       photoPath: json['photoPath'] as String?,
       groupId: json['groupId'] as String?,
+      notificationsEnabled: json['notificationsEnabled'] as bool? ?? true,
     );
   }
 
@@ -84,6 +90,7 @@ class Profile extends HiveObject {
     int? avatarColor,
     String? photoPath,
     String? groupId,
+    bool? notificationsEnabled,
   }) {
     return Profile(
       id: id ?? this.id,
@@ -95,6 +102,7 @@ class Profile extends HiveObject {
       avatarColor: avatarColor ?? this.avatarColor,
       photoPath: photoPath ?? this.photoPath,
       groupId: groupId ?? this.groupId,
+      notificationsEnabled: notificationsEnabled ?? this.notificationsEnabled,
     );
   }
 }

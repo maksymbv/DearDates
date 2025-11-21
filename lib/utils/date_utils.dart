@@ -1,6 +1,6 @@
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
-import '../localization/app_localizations.dart';
+import '../l10n/app_localizations.dart';
 
 String formatDate(DateTime date, [Locale? locale]) {
   final localeString = _getLocaleString(locale);
@@ -156,5 +156,35 @@ String _getTurnsText(AppLocalizations localizations) {
   } else {
     return 'Turns';
   }
+}
+
+/// Возвращает правильную форму слова "день/дня/дней" в зависимости от количества дней
+/// Поддерживает английский, русский и украинский языки
+String pluralDays(int days, AppLocalizations loc) {
+  final lang = loc.locale.languageCode;
+  
+  if (lang == 'en') {
+    return days == 1 ? loc.day : loc.days;
+  }
+  
+  if (lang == 'ru' || lang == 'uk') {
+    // Для русского и украинского используем склонения
+    // 1, 21, 31... → "день" / "день"
+    if (days % 10 == 1 && days % 100 != 11) {
+      return loc.day;
+    }
+    
+    // 2-4, 22-24, 32-34... → "дня" / "дні"
+    if (days % 10 >= 2 && days % 10 <= 4 && 
+        (days % 100 < 10 || days % 100 >= 20)) {
+      return loc.days;
+    }
+    
+    // Остальные → "дней" / "днів"
+    return loc.days;
+  }
+  
+  // Fallback для других языков
+  return days == 1 ? loc.day : loc.days;
 }
 

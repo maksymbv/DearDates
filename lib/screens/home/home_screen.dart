@@ -1,21 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import '../models/profile.dart';
-import '../models/group.dart';
-import '../services/storage_service.dart';
-import '../services/notification_service.dart';
-import '../services/theme_service.dart';
-import '../services/group_service.dart';
-import '../utils/date_utils.dart';
-import '../widgets/profile_list.dart';
-import '../widgets/group_menu_dialog.dart';
-import '../widgets/create_group_dialog.dart';
-import '../widgets/edit_group_dialog.dart';
-import '../theme/app_text_styles.dart';
-import '../theme/theme_helper.dart';
-import '../localization/app_localizations.dart';
-import 'add_profile_screen.dart';
-import 'settings_screen.dart';
+import '../../models/profile.dart';
+import '../../models/group.dart';
+import '../../services/storage_service.dart';
+import '../../services/notification_service.dart';
+import '../../services/group_service.dart';
+import '../../utils/date_utils.dart';
+import '../../widgets/profile_list.dart';
+import '../../widgets/group_menu_dialog.dart';
+import '../../widgets/create_group_dialog.dart';
+import '../../widgets/edit_group_dialog.dart';
+import '../../themes/app_text_styles.dart';
+import '../../themes/theme_helper.dart';
+import '../../l10n/app_localizations.dart';
+import '../profile/add_profile_screen.dart';
+import '../settings/settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -26,7 +25,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final StorageService _storageService = StorageService();
-  final ThemeService _themeService = ThemeService();
   final GroupService _groupService = GroupService();
   List<Profile> _profiles = [];
   List<Profile> _filteredProfiles = [];
@@ -41,25 +39,17 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _themeService.addListener(_onThemeChanged);
     _initializeAndLoad();
   }
   
   @override
   void dispose() {
-    _themeService.removeListener(_onThemeChanged);
     _searchController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
   }
   
-  void _onThemeChanged() {
-    if (mounted) {
-      setState(() {});
-    }
-  }
-  
-  Color get _primaryColor => Color(_themeService.primaryColor);
+  Color _getPrimaryColor(BuildContext context) => Theme.of(context).colorScheme.primary;
 
   Future<void> _initializeAndLoad() async {
     // Инициализируем уведомления и планируем их
@@ -184,7 +174,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!context.mounted || _isModalOpen) return;
     _isModalOpen = true;
     
-    final result = await GroupMenuDialog.show(context, group, _primaryColor);
+    final result = await GroupMenuDialog.show(context, group, _getPrimaryColor(context));
     
     _isModalOpen = false;
     if (!mounted || !context.mounted) return;
@@ -206,7 +196,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted || !context.mounted || _isModalOpen) return;
     _isModalOpen = true;
     
-    final result = await CreateGroupDialog.show(context, _primaryColor);
+    final result = await CreateGroupDialog.show(context, _getPrimaryColor(context));
     
     _isModalOpen = false;
     if (!mounted) return;
@@ -222,7 +212,7 @@ class _HomeScreenState extends State<HomeScreen> {
     if (!mounted || !context.mounted || _isModalOpen) return;
     _isModalOpen = true;
     
-    final result = await EditGroupDialog.show(context, group, _primaryColor);
+    final result = await EditGroupDialog.show(context, group, _getPrimaryColor(context));
     
     _isModalOpen = false;
     if (!mounted) return;
@@ -412,7 +402,7 @@ class _HomeScreenState extends State<HomeScreen> {
         curve: Curves.easeInOut,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? _primaryColor : Theme.of(context).cardColor,
+          color: isSelected ? _getPrimaryColor(context) : Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
@@ -602,7 +592,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   _buildGroupFilterButton(
                     label: AppLocalizations.of(context).all,
                     isSelected: _selectedGroupId == null,
-                    count: _profiles.length,
+                    count: _selectedGroupId == null ? _profiles.length : null,
                     onTap: () => _selectGroup(null),
                   ),
                   const SizedBox(width: 8),
@@ -610,12 +600,13 @@ class _HomeScreenState extends State<HomeScreen> {
                   ..._groups.map((group) {
                     // Подсчитываем количество профилей в группе
                     final count = _profiles.where((p) => p.groupId == group.id).length;
+                    final isSelected = _selectedGroupId == group.id;
                     return Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: _buildGroupFilterButton(
                         label: group.name,
-                        isSelected: _selectedGroupId == group.id,
-                        count: count,
+                        isSelected: isSelected,
+                        count: isSelected ? count : null, // Показываем количество только для активной группы
                         onTap: () => _selectGroup(group.id),
                         onLongPress: () => _showGroupMenu(context, group),
                       ),
@@ -629,21 +620,20 @@ class _HomeScreenState extends State<HomeScreen> {
             child: _isLoading
                 ? Center(
                     child: CircularProgressIndicator(
-                      color: _primaryColor.withOpacity(0.7),
+                      color: _getPrimaryColor(context).withOpacity(0.7),
                     ),
                   )
                 : _profiles.isEmpty
               ? Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
-                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Container(
                         padding: const EdgeInsets.all(24),
                         child: Icon(
                           LucideIcons.cake,
                           size: 64,
-                          color: _primaryColor.withOpacity(0.7),
+                          color: _getPrimaryColor(context).withOpacity(0.7),
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -747,7 +737,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           return ProfileList(
                             profiles: _filteredProfiles,
                             groups: _groups,
-                            primaryColor: _primaryColor,
+                            primaryColor: _getPrimaryColor(context),
                             getGroupName: _getGroupName,
                             onRefresh: _loadProfiles,
                             onProfileUpdated: _loadProfiles,
@@ -761,7 +751,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       floatingActionButton: Material(
-        color: _primaryColor,
+        color: _getPrimaryColor(context),
         shape: const CircleBorder(),
         child: InkWell(
           onTap: () async {
@@ -774,9 +764,7 @@ class _HomeScreenState extends State<HomeScreen> {
             if (!mounted) return;
             await _loadProfiles();
             if (!mounted) return;
-            // Обновляем уведомления после создания профиля
-            final notificationService = NotificationService();
-            await notificationService.scheduleAllNotifications();
+            // Уведомления автоматически обновляются в StorageService.addProfile()
           },
           customBorder: const CircleBorder(),
           hoverColor: Colors.transparent,

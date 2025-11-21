@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
-import '../localization/app_localizations.dart';
+import '../l10n/app_localizations.dart';
 
 /// Custom DatePicker with support for iOS and Android
 class CustomDatePicker {
@@ -32,7 +32,7 @@ class CustomDatePicker {
         initialDate: initialDate,
         firstDate: firstDate,
         lastDate: lastDate,
-        locale: const Locale('en', 'US'),
+        locale: const Locale('en', 'GB'),
       );
     }
 

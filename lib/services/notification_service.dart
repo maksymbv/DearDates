@@ -4,7 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import '../models/profile.dart';
-import '../localization/app_localizations.dart';
+import '../l10n/app_localizations.dart';
 import '../utils/date_utils.dart';
 import 'storage_service.dart';
 import 'notification_text_builder.dart';
@@ -44,10 +44,19 @@ class NotificationService {
       iOS: darwinSettings,
     );
 
-    await _notifications.initialize(
-      initSettings,
-      onDidReceiveNotificationResponse: _onNotificationTapped,
-    );
+    try {
+      final initResult = await _notifications.initialize(
+        initSettings,
+        onDidReceiveNotificationResponse: _onNotificationTapped,
+      );
+      // Инициализация может вернуть bool? на некоторых платформах, игнорируем результат
+      if (initResult == null || initResult == false) {
+        debugPrint('Notification initialization returned false or null');
+      }
+    } catch (e) {
+      debugPrint('Error initializing notifications: $e');
+      // Продолжаем работу даже если инициализация не удалась
+    }
 
     // Запрашиваем разрешения для Android 13+
     final androidImplementation = _notifications
@@ -62,7 +71,34 @@ class NotificationService {
     // Можно добавить навигацию к профилю
   }
 
-  // Получение настроек уведомлений из хранилища
+  // Получение состояния включения уведомлений
+  Future<bool> areNotificationsEnabled() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      // По умолчанию уведомления включены
+      final value = prefs.getBool('notifications_enabled');
+      return value ?? true;
+    } catch (e) {
+      // В случае ошибки считаем, что уведомления включены
+      debugPrint('Error getting notifications enabled state: $e');
+      return true;
+    }
+  }
+
+  // Установка состояния включения уведомлений
+  Future<void> setNotificationsEnabled(bool enabled) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('notifications_enabled', enabled);
+    if (enabled) {
+      // Если включили, перепланируем все уведомления
+      await scheduleAllNotifications();
+    } else {
+      // Если выключили, отменяем все уведомления
+      await cancelAllNotifications();
+    }
+  }
+
+  // Получение глобальных настроек уведомлений из хранилища
   Future<List<int>> getReminderDays() async {
     final prefs = await SharedPreferences.getInstance();
     final daysString = prefs.getString('reminder_days');
@@ -72,28 +108,52 @@ class NotificationService {
     return defaultReminderDays;
   }
 
+
   // Сохранение настроек уведомлений
   Future<void> setReminderDays(List<int> days) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('reminder_days', days.join(','));
-    // Перепланируем уведомления с новыми настройками
+    // Перепланируем уведомления для всех профилей с включенными уведомлениями
     await scheduleAllNotifications();
   }
 
   // Планирование уведомлений для всех профилей
   Future<void> scheduleAllNotifications() async {
     await initialize();
+    // Проверяем, включены ли глобальные уведомления
+    final enabled = await areNotificationsEnabled();
+    if (!enabled) {
+      await cancelAllNotifications();
+      return;
+    }
     await cancelAllNotifications();
     final profiles = await _storage.loadProfiles();
     final reminderDays = await getReminderDays();
     for (final profile in profiles) {
-      await scheduleProfile(profile, reminderDays);
+      // Планируем только если у профиля включены уведомления
+      if (profile.notificationsEnabled) {
+        await scheduleProfile(profile, reminderDays);
+      }
     }
   }
 
   // Планирование уведомлений для конкретного профиля
-  Future<void> scheduleProfile(Profile profile, List<int> reminderDays) async {
+  // Если reminderDays не указан, использует глобальные настройки
+  Future<void> scheduleProfile(Profile profile, [List<int>? reminderDays]) async {
     await initialize();
+    // Проверяем, включены ли глобальные уведомления
+    final globalEnabled = await areNotificationsEnabled();
+    if (!globalEnabled) {
+      return;
+    }
+    
+    // Проверяем, включены ли уведомления для профиля
+    if (!profile.notificationsEnabled) {
+      return;
+    }
+    
+    // Если дни не указаны, используем глобальные настройки
+    final days = reminderDays ?? await getReminderDays();
     
     final loc = await _createTextBuilder();
     final nextBirthday = calculateNextBirthday(profile.birthdate);
@@ -110,13 +170,13 @@ class NotificationService {
 
     // 1) Напоминания заранее
     final birthdayDate = DateTime(birthday.year, birthday.month, birthday.day);
-    for (final days in reminderDays) {
-      final date = birthday.subtract(Duration(days: days));
+    for (final day in days) {
+      final date = birthday.subtract(Duration(days: day));
       if (date.isAfter(tz.TZDateTime.now(tz.local))) {
         await _schedule(
-          id: _id(profile, days),
+          id: _id(profile, day),
           title: loc.titleForReminder(),
-          body: loc.bodyForReminder(profile.name, days, birthdayDate),
+          body: loc.bodyForReminder(profile.name, day, birthdayDate),
           date: date,
         );
       }

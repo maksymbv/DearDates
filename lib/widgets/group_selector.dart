@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../models/group.dart';
 import '../services/group_service.dart';
-import '../theme/app_text_styles.dart';
-import '../theme/theme_helper.dart';
-import '../localization/app_localizations.dart';
+import '../themes/app_text_styles.dart';
+import '../themes/theme_helper.dart';
+import '../l10n/app_localizations.dart';
 
 /// Bottom sheet for selecting a group
 class GroupSelector {

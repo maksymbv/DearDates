@@ -16,25 +16,16 @@ extension AppThemeExtension on AppTheme {
     }
   }
   
-  // Основной цвет темы (более яркие и современные)
+  // Основной цвет темы
   int get primaryColor {
     switch (this) {
       case AppTheme.pink:
-        return 0xFFE91E63; // Яркий розовый
+        return 0xFFE91E63; // Розовый
       case AppTheme.blue:
         return 0xFF2196F3; // Яркий синий
     }
   }
   
-  // Более темный оттенок для градиентов
-  int get primaryDarkColor {
-    switch (this) {
-      case AppTheme.pink:
-        return 0xFFC2185B;
-      case AppTheme.blue:
-        return 0xFF1976D2;
-    }
-  }
 }
 
 class ThemeService extends ChangeNotifier {
@@ -53,7 +44,6 @@ class ThemeService extends ChangeNotifier {
   bool get isDarkMode => _brightness == Brightness.dark;
   
   int get primaryColor => _currentTheme.primaryColor;
-  int get primaryDarkColor => _currentTheme.primaryDarkColor;
   
   Future<void> loadTheme() async {
     final prefs = await SharedPreferences.getInstance();

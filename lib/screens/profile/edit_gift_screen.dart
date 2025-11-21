@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import '../models/profile.dart';
-import '../services/storage_service.dart';
-import '../services/theme_service.dart';
-import '../theme/theme_helper.dart';
-import '../localization/app_localizations.dart';
+import '../../models/profile.dart';
+import '../../services/storage_service.dart';
+import '../../themes/theme_helper.dart';
+import '../../l10n/app_localizations.dart';
 
 class EditGiftScreen extends StatefulWidget {
   final String profileId;
@@ -22,12 +21,11 @@ class EditGiftScreen extends StatefulWidget {
 
 class _EditGiftScreenState extends State<EditGiftScreen> {
   final StorageService _storageService = StorageService();
-  final ThemeService _themeService = ThemeService();
   final TextEditingController _ideaController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   bool _isSaving = false;
 
-  Color get _primaryColor => Color(_themeService.primaryColor);
+  Color _getPrimaryColor(BuildContext context) => Theme.of(context).colorScheme.primary;
   bool get _isEditing => widget.gift != null;
 
   @override
@@ -272,7 +270,7 @@ class _EditGiftScreenState extends State<EditGiftScreen> {
                 TextField(
                   controller: _descriptionController,
                   decoration: InputDecoration(
-                    labelText: '${AppLocalizations.of(context).description} (${AppLocalizations.of(context).cancel.toLowerCase()})',
+                    labelText: AppLocalizations.of(context).description,
                     labelStyle: TextStyle(
                       color: context.secondaryTextColor,
                       fontSize: 15,
@@ -295,10 +293,10 @@ class _EditGiftScreenState extends State<EditGiftScreen> {
             width: double.infinity,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
-              color: _primaryColor,
+              color: _getPrimaryColor(context),
               boxShadow: [
                 BoxShadow(
-                  color: _primaryColor.withOpacity(0.3),
+                  color: _getPrimaryColor(context).withOpacity(0.3),
                   blurRadius: 12,
                   offset: const Offset(0, 6),
                 ),

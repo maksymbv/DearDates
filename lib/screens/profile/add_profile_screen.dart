@@ -2,17 +2,17 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
-import '../models/profile.dart';
-import '../models/group.dart';
-import '../services/storage_service.dart';
-import '../services/theme_service.dart';
-import '../services/photo_service.dart';
-import '../services/group_service.dart';
-import '../widgets/group_selector.dart';
-import '../widgets/custom_date_picker.dart';
-import '../theme/theme_helper.dart';
-import '../localization/app_localizations.dart';
-import '../utils/date_utils.dart';
+import '../../models/profile.dart';
+import '../../models/group.dart';
+import '../../services/storage_service.dart';
+import '../../services/photo_service.dart';
+import '../../services/group_service.dart';
+import '../../widgets/group_selector.dart';
+import '../../widgets/custom_date_picker.dart';
+import '../../widgets/avatar.dart';
+import '../../themes/theme_helper.dart';
+import '../../l10n/app_localizations.dart';
+import '../../utils/date_utils.dart';
 
 class AddProfileScreen extends StatefulWidget {
   final Profile? profile;
@@ -29,7 +29,6 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
   late final TextEditingController _notesController;
   DateTime? _selectedDate;
   final StorageService _storageService = StorageService();
-  final ThemeService _themeService = ThemeService();
   final PhotoService _photoService = PhotoService();
   final GroupService _groupService = GroupService();
   
@@ -38,15 +37,15 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
   int? _avatarColor; // Цвет аватара, задается один раз при создании
   String? _selectedGroupId; // Выбранная группа
   List<Group> _groups = [];
+  bool _notificationsEnabled = true; // Включены ли уведомления
 
   bool get _isEditing => widget.profile != null;
   
-  Color get _primaryColor => Color(_themeService.primaryColor);
+  Color _getPrimaryColor(BuildContext context) => Theme.of(context).colorScheme.primary;
 
   @override
   void initState() {
     super.initState();
-    _themeService.addListener(_onThemeChanged);
     final profile = widget.profile;
     
     // Инициализируем уникальный ключ формы на основе ID профиля или времени создания
@@ -60,7 +59,8 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
     if (profile != null) {
       _selectedDate = profile.birthdate;
       // Проверяем существование файла перед установкой пути
-      if (profile.photoPath != null && File(profile.photoPath!).existsSync()) {
+      final photoService = PhotoService();
+      if (photoService.photoExistsSync(profile.photoPath)) {
         _photoPath = profile.photoPath;
       } else {
         // Если файл не существует, не устанавливаем путь
@@ -68,6 +68,7 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
       }
       _avatarColor = profile.avatarColor;
       _selectedGroupId = profile.groupId;
+      _notificationsEnabled = profile.notificationsEnabled;
     } else {
       _selectedDate = null;
       // Генерируем цвет аватара один раз при создании нового профиля
@@ -90,7 +91,7 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
     final selectedId = await GroupSelector.show(
       context,
       selectedGroupId: _selectedGroupId,
-      primaryColor: _primaryColor,
+      primaryColor: _getPrimaryColor(context),
     );
     
     if (!mounted) return;
@@ -213,6 +214,7 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
               : _notesController.text.trim(),
           photoPath: photoPathToSave,
           groupId: _selectedGroupId,
+          notificationsEnabled: _notificationsEnabled,
         );
         await _storageService.updateProfile(updatedProfile);
       } else {
@@ -229,6 +231,7 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
           avatarColor: _avatarColor ?? StorageService.generatePastelColor(),
           photoPath: _photoPath,
           groupId: _selectedGroupId,
+          notificationsEnabled: _notificationsEnabled,
         );
         await _storageService.addProfile(profile);
       }
@@ -385,12 +388,12 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               ListTile(
-                leading: Icon(LucideIcons.image, size: 24, color: _primaryColor),
+                leading: Icon(LucideIcons.image, size: 24, color: _getPrimaryColor(context)),
                 title: Text(localizations.selectFromGallery),
                 onTap: () => Navigator.pop(context, ImageSource.gallery),
               ),
               ListTile(
-                leading: Icon(LucideIcons.camera, size: 24, color: _primaryColor),
+                leading: Icon(LucideIcons.camera, size: 24, color: _getPrimaryColor(context)),
                 title: Text(localizations.takePhoto),
                 onTap: () => Navigator.pop(context, ImageSource.camera),
               ),
@@ -441,12 +444,7 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
   void dispose() {
     _nameController.dispose();
     _notesController.dispose();
-    _themeService.removeListener(_onThemeChanged);
     super.dispose();
-  }
-  
-  void _onThemeChanged() {
-    safeSetState(() {});
   }
 
   // Получение более темного оттенка цвета для градиента
@@ -483,7 +481,7 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
             Padding(
               padding: const EdgeInsets.only(right: 20),
               child: IconButton(
-                icon: Icon(LucideIcons.check, size: 24, color: _primaryColor),
+                icon: Icon(LucideIcons.check, size: 24, color: _getPrimaryColor(context)),
                 onPressed: _saveProfile,
                 padding: EdgeInsets.zero,
                 mouseCursor: SystemMouseCursors.basic,
@@ -517,57 +515,16 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
                         onTap: _showImageSourceDialog,
                         child: Stack(
                           children: [
-                            Container(
-                              width: 100,
-                              height: 100,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: LinearGradient(
-                                  colors: [
-                                    Color(_avatarColor ?? StorageService.generatePastelColor()),
-                                    _getDarkerShade(_avatarColor ?? StorageService.generatePastelColor()),
-                                  ],
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                )
-                              ),
-                              child: _photoPath != null && File(_photoPath!).existsSync()
-                                  ? ClipOval(
-                                      child: Image.file(
-                                        File(_photoPath!),
-                                        fit: BoxFit.cover,
-                                        errorBuilder: (context, error, stackTrace) {
-                                          return Center(
-                                            child: Text(
-                                              widget.profile?.name.isNotEmpty == true
-                                                  ? widget.profile!.name[0].toUpperCase()
-                                                  : (_nameController.text.isNotEmpty
-                                                      ? _nameController.text[0].toUpperCase()
-                                                      : ''),
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontSize: 40,
-                                                fontWeight: FontWeight.bold,
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    )
-                                  : Center(
-                                      child: Text(
-                                        widget.profile?.name.isNotEmpty == true
-                                            ? widget.profile!.name[0].toUpperCase()
-                                            : (_nameController.text.isNotEmpty
-                                                ? _nameController.text[0].toUpperCase()
-                                                : ''),
-                                        style: const TextStyle(
-                                          color: Colors.white,
-                                          fontSize: 40,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
+                            AvatarWidget(
+                              photoPath: _photoPath,
+                              avatarColor: _avatarColor ?? StorageService.generatePastelColor(),
+                              name: widget.profile?.name.isNotEmpty == true
+                                  ? widget.profile!.name
+                                  : (_nameController.text.isNotEmpty
+                                      ? _nameController.text
+                                      : ''),
+                              size: 100,
+                              fontSize: 40,
                             ),
                             Positioned(
                               bottom: 0,
@@ -576,7 +533,7 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
                                 width: 32,
                                 height: 32,
                                 decoration: BoxDecoration(
-                                  color: _primaryColor,
+                                  color: _getPrimaryColor(context),
                                   shape: BoxShape.circle,
                                   border: Border.all(
                                     color: Colors.white,
@@ -685,7 +642,7 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
                             ),
                             Icon(
                               LucideIcons.calendar,
-                              color: _primaryColor,
+                              color: _getPrimaryColor(context),
                               size: 24,
                             ),
                           ],
@@ -804,6 +761,53 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
                             ),
                           ],
                         ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    // Переключатель уведомлений
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 18,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).inputDecorationTheme.fillColor ?? Theme.of(context).cardColor,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.grey[800]!
+                              : Colors.grey[200]!,
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            LucideIcons.bell,
+                            color: _getPrimaryColor(context),
+                            size: 24,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              AppLocalizations.of(context).enableNotifications,
+                              style: TextStyle(
+                                fontSize: 15,
+                                color: context.textColor,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          Switch(
+                            value: _notificationsEnabled,
+                            onChanged: (value) {
+                              setState(() {
+                                _notificationsEnabled = value;
+                              });
+                            },
+                            activeThumbColor: _getPrimaryColor(context),
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 28),
