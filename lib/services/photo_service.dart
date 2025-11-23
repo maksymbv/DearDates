@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -72,6 +73,31 @@ class PhotoService {
 
     await image.saveTo(savedImage.path);
     debugPrint('PhotoService: saved image to ${savedImage.path}');
+    // Попытаться сгенерировать миниатюру (thumb)
+    try {
+      final thumbDir = Directory(path.join(photosDir.path, 'thumbs'));
+      if (!await thumbDir.exists()) {
+        await thumbDir.create(recursive: true);
+      }
+
+      // Размер миниатюры: 400x400 (достаточно для ретина)
+      const int thumbSize = 400;
+
+      final bytes = await savedImage.readAsBytes();
+      final codec = await ui.instantiateImageCodec(bytes, targetWidth: thumbSize, targetHeight: thumbSize);
+      final frame = await codec.getNextFrame();
+      final uiImage = frame.image;
+      final byteData = await uiImage.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData != null) {
+        final thumbName = '${path.withoutExtension(fileName)}_thumb.png';
+        final thumbFile = File(path.join(thumbDir.path, thumbName));
+        await thumbFile.writeAsBytes(byteData.buffer.asUint8List());
+        debugPrint('PhotoService: saved thumbnail to ${thumbFile.path}');
+      }
+    } catch (e) {
+      debugPrint('PhotoService: failed to create thumbnail: $e');
+    }
+
     return fileName; // возвращаем basename, чтобы хранить переносимый идентификатор файла
   }
 
@@ -104,6 +130,17 @@ class PhotoService {
           // Игнорируем и пробуем следующий вариант
         }
       }
+      // Также пробуем удалить миниатюру, если есть
+      try {
+        final photosDir = _photosDirPath != null ? Directory(_photosDirPath!) : await _getPhotosDirectory();
+        final thumbDir = Directory(path.join(photosDir.path, 'thumbs'));
+        final base = path.basenameWithoutExtension(photoPath);
+        final thumbFile = File(path.join(thumbDir.path, '${base}_thumb.png'));
+        if (await thumbFile.exists()) {
+          await thumbFile.delete();
+          debugPrint('PhotoService: deleted thumbnail at ${thumbFile.path}');
+        }
+      } catch (_) {}
     } catch (e) {
       debugPrint('PhotoService: ошибка при удалении фото: $e');
     }
@@ -222,6 +259,26 @@ class PhotoService {
         final candidate2 = File(path.join(photosDir.path, base));
         if (await candidate2.exists()) return candidate2;
       }
+    } catch (_) {}
+
+    return null;
+  }
+
+  /// Асинхронно возвращает `File` миниатюры для указанного `photoPath`, либо null если не найден.
+  Future<File?> getThumbnailFileForPhotoPath(String? photoPath) async {
+    if (photoPath == null || photoPath.isEmpty) return null;
+
+    try {
+      final photosDir = await _getPhotosDirectory();
+      final base = path.basenameWithoutExtension(photoPath);
+      final thumbPath = path.join(photosDir.path, 'thumbs', '${base}_thumb.png');
+      final thumbFile = File(thumbPath);
+      if (await thumbFile.exists()) return thumbFile;
+
+      // Если photoPath был абсолютный, попробуем basename
+      final baseOnly = path.basename(photoPath);
+      final altThumb = File(path.join(photosDir.path, 'thumbs', '${path.basenameWithoutExtension(baseOnly)}_thumb.png'));
+      if (await altThumb.exists()) return altThumb;
     } catch (_) {}
 
     return null;

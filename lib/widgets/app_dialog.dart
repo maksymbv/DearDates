@@ -323,24 +323,25 @@ class AppDialog {
     _isDialogOpen = true;
 
     try {
-      return await showModalBottomSheet<String>(
+      final result = await showModalBottomSheet<String>(
         context: context,
         backgroundColor: Colors.transparent,
         isScrollControlled: true,
         isDismissible: true,
         enableDrag: true,
         builder: (context) => _TextFieldDialogWidget(
-        title: title,
-        labelText: labelText,
-        initialValue: initialValue,
-        confirmText: confirmText,
-        cancelText: cancelText,
-        primaryColor: primaryColor ?? Theme.of(context).colorScheme.primary,
-        maxLength: maxLength,
-        validator: validator,
-        autofocus: autofocus,
-      ),
-    );
+          title: title,
+          labelText: labelText,
+          initialValue: initialValue,
+          confirmText: confirmText,
+          cancelText: cancelText,
+          primaryColor: primaryColor ?? Theme.of(context).colorScheme.primary,
+          maxLength: maxLength,
+          validator: validator,
+          autofocus: autofocus,
+        ),
+      );
+      return result;
     } finally {
       // Reset the flag after the dialog is closed
       Future.delayed(const Duration(milliseconds: 300), () {
@@ -355,23 +356,12 @@ class AppDialog {
     required List<DialogButton> buttons,
     EdgeInsets? padding,
   }) async {
-    // Protection from multiple openings
-    if (_isDialogOpen) return null;
-    _isDialogOpen = true;
-
-    try {
-      return await show<String>(
-        context: context,
-        content: const SizedBox.shrink(),
-        buttons: buttons,
-        padding: padding ?? const EdgeInsets.all(20),
-      );
-    } finally {
-      // Reset the flag after the dialog is closed
-      Future.delayed(const Duration(milliseconds: 300), () {
-        _isDialogOpen = false;
-      });
-    }
+    return await show<String>(
+      context: context,
+      content: const SizedBox.shrink(),
+      buttons: buttons,
+      padding: padding ?? const EdgeInsets.all(20),
+    );
   }
 }
 

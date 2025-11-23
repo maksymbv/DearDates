@@ -500,6 +500,9 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
       body: Form(
         key: _formKey,
         child: ListView(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).padding.bottom + 20,
+          ),
           children: [
             // Карточка с полями
             Container(

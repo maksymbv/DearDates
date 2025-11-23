@@ -1,10 +1,11 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/photo_service.dart';
 
 /// Универсальный виджет для отображения аватара профиля
-/// Обрабатывает проверку существования фото и placeholder с инициалом
-class AvatarWidget extends StatelessWidget {
+/// Асинхронно загружает файл изображения и использует уменьшенное декодирование
+class AvatarWidget extends StatefulWidget {
   final String? photoPath;
   final int avatarColor;
   final String name;
@@ -21,40 +22,83 @@ class AvatarWidget extends StatelessWidget {
   });
 
   @override
+  State<AvatarWidget> createState() => _AvatarWidgetState();
+}
+
+class _AvatarWidgetState extends State<AvatarWidget> {
+  Future<File?>? _photoFileFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPhoto();
+  }
+
+  @override
+  void didUpdateWidget(covariant AvatarWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.photoPath != widget.photoPath) {
+      _loadPhoto();
+    }
+  }
+
+  void _loadPhoto() {
+    final service = PhotoService();
+    _photoFileFuture = () async {
+      // Try thumbnail first, then full image
+      final thumb = await service.getThumbnailFileForPhotoPath(widget.photoPath);
+      if (thumb != null) return thumb;
+      return await service.getFileForPhotoPath(widget.photoPath);
+    }();
+    // Trigger rebuild
+    setState(() {});
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final photoService = PhotoService();
-    final resolvedPath = photoService.resolvePhotoPathSync(photoPath);
-    final hasPhoto = resolvedPath != null;
-    final displayFontSize = fontSize ?? (size * 0.4);
+    final displayFontSize = widget.fontSize ?? (widget.size * 0.4);
 
     return Container(
-      width: size,
-      height: size,
+      width: widget.size,
+      height: widget.size,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: Color(avatarColor),
+        color: Color(widget.avatarColor),
         shape: BoxShape.circle,
       ),
-      child: hasPhoto
-          ? ClipOval(
+      child: FutureBuilder<File?>(
+        future: _photoFileFuture,
+        builder: (context, snapshot) {
+          final file = snapshot.data;
+          if (file != null) {
+            // Use Image.file with explicit width/height and high filter quality
+            // so Flutter can decode an appropriately sized image and scale nicely.
+            return ClipOval(
               child: SizedBox(
-                width: size,
-                height: size,
+                width: widget.size,
+                height: widget.size,
                 child: Image.file(
-                  File(resolvedPath!),
+                  file,
+                  width: widget.size,
+                  height: widget.size,
                   fit: BoxFit.cover,
+                  filterQuality: FilterQuality.high,
                   errorBuilder: (context, error, stackTrace) {
                     return _buildInitial(context, displayFontSize);
                   },
                 ),
               ),
-            )
-          : _buildInitial(context, displayFontSize),
+            );
+          }
+
+          return _buildInitial(context, displayFontSize);
+        },
+      ),
     );
   }
 
   Widget _buildInitial(BuildContext context, double fontSize) {
-    final initial = name.isNotEmpty ? name[0].toUpperCase() : '';
+    final initial = widget.name.isNotEmpty ? widget.name[0].toUpperCase() : '';
     return Center(
       child: Text(
         initial,

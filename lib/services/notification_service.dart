@@ -166,8 +166,6 @@ class NotificationService {
       0,
     );
     
-    if (!birthday.isAfter(tz.TZDateTime.now(tz.local))) return;
-
     // 1) Напоминания заранее
     final birthdayDate = DateTime(birthday.year, birthday.month, birthday.day);
     for (final day in days) {
@@ -179,16 +177,22 @@ class NotificationService {
           body: loc.bodyForReminder(profile.name, day, birthdayDate),
           date: date,
         );
+      } else {
+        debugPrint('NotificationService: skipping scheduling reminder for profile ${profile.id} day=$day date=$date (in past)');
       }
     }
 
-    // 2) День рождения
-    await _schedule(
-      id: _id(profile, 0),
-      title: loc.titleForBirthday(),
-      body: loc.bodyForBirthday(profile.name),
-      date: birthday,
-    );
+    // 2) День рождения (schedule only if in the future)
+    if (birthday.isAfter(tz.TZDateTime.now(tz.local))) {
+      await _schedule(
+        id: _id(profile, 0),
+        title: loc.titleForBirthday(),
+        body: loc.bodyForBirthday(profile.name),
+        date: birthday,
+      );
+    } else {
+      debugPrint('NotificationService: skipping birthday notification for profile ${profile.id} date=$birthday (in past)');
+    }
   }
 
   // Создание NotificationTextBuilder с английской локалью
@@ -221,6 +225,7 @@ class NotificationService {
     );
 
     try {
+      debugPrint('NotificationService: scheduling id=$id date=$date title="$title"');
       await _notifications.zonedSchedule(
         id,
         title,
@@ -229,8 +234,9 @@ class NotificationService {
         details,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       );
-    } catch (e) {
-      // Игнорируем ошибки планирования (например, если дата в прошлом)
+      debugPrint('NotificationService: scheduled id=$id date=$date');
+    } catch (e, st) {
+      debugPrint('NotificationService: failed to schedule id=$id date=$date error=$e\n$st');
     }
   }
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../../models/profile.dart';
 import '../../models/group.dart';
@@ -32,9 +33,9 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = true;
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
+  Timer? _searchDebounce;
   bool _isSearching = false;
   String? _selectedGroupId; // null означает "Все"
-  bool _isModalOpen = false; // Флаг для предотвращения одновременного открытия модальных окон
   
   @override
   void initState() {
@@ -56,7 +57,11 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final notificationService = NotificationService();
       await notificationService.initialize();
-      await notificationService.scheduleAllNotifications();
+      // Не блокируем инициализацию UI планированием уведомлений — планируем после первого кадра
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        // scheduleAllNotifications может выполняться асинхронно, не ждем его здесь
+        notificationService.scheduleAllNotifications();
+      });
     } catch (e) {
       // Игнорируем ошибки инициализации уведомлений
       debugPrint('Failed to initialize notifications: $e');
@@ -157,7 +162,17 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _filterProfiles(String query) {
+    // deprecated path - keep for compatibility
     _applyFilters();
+  }
+
+  void _onSearchChanged(String query) {
+    _searchDebounce?.cancel();
+    // Debounce filtering to avoid heavy work on every keystroke
+    _searchDebounce = Timer(const Duration(milliseconds: 250), () {
+      if (!mounted) return;
+      _applyFilters();
+    });
   }
 
   // Выбор группы для фильтрации
@@ -169,36 +184,20 @@ class _HomeScreenState extends State<HomeScreen> {
     _applyFilters();
   }
 
-  // Показать меню группы (редактировать/удалить)
+  // Показать диалог редактирования группы при долгом нажатии
   Future<void> _showGroupMenu(BuildContext context, Group group) async {
-    if (!context.mounted || _isModalOpen) return;
-    _isModalOpen = true;
+    if (!context.mounted) return;
     
-    final result = await GroupMenuDialog.show(context, group, _getPrimaryColor(context));
-    
-    _isModalOpen = false;
-    if (!mounted || !context.mounted) return;
-    
-    // Небольшая задержка, чтобы предыдущее модальное окно успело закрыться
-    await Future.delayed(const Duration(milliseconds: 200));
-    
-    if (!mounted || !context.mounted) return;
-    
-    if (result == 'edit') {
-      await _showEditGroupDialog(context, group);
-    } else if (result == 'delete') {
-      await _deleteGroup(context, group);
-    }
+    // Сразу открываем диалог редактирования
+    await _showEditGroupDialog(context, group);
   }
 
   // Диалог создания группы
   Future<void> _showCreateGroupDialog(BuildContext context) async {
-    if (!mounted || !context.mounted || _isModalOpen) return;
-    _isModalOpen = true;
+    if (!mounted || !context.mounted) return;
     
     final result = await CreateGroupDialog.show(context, _getPrimaryColor(context));
     
-    _isModalOpen = false;
     if (!mounted) return;
     
     if (result != null && result.isNotEmpty) {
@@ -209,12 +208,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Диалог редактирования группы
   Future<void> _showEditGroupDialog(BuildContext context, Group group) async {
-    if (!mounted || !context.mounted || _isModalOpen) return;
-    _isModalOpen = true;
+    if (!mounted || !context.mounted) return;
     
     final result = await EditGroupDialog.show(context, group, _getPrimaryColor(context));
     
-    _isModalOpen = false;
     if (!mounted) return;
     
     // Небольшая задержка перед обновлением данных
@@ -222,9 +219,15 @@ class _HomeScreenState extends State<HomeScreen> {
     
     if (!mounted) return;
     
-    if (result != null && result.isNotEmpty && result != group.name) {
-      await _groupService.updateGroup(group.copyWith(name: result));
-      await _loadProfiles();
+    if (result != null) {
+      if (result.shouldDelete) {
+        // Пользователь хочет удалить группу
+        await _deleteGroup(context, group);
+      } else if (result.newName != null && result.newName!.isNotEmpty && result.newName != group.name) {
+        // Пользователь изменил название группы
+        await _groupService.updateGroup(group.copyWith(name: result.newName!));
+        await _loadProfiles();
+      }
     }
   }
 
@@ -253,8 +256,7 @@ class _HomeScreenState extends State<HomeScreen> {
           .replaceAll('{count}', count.toString())
           .replaceAll('{profileText}', profileText);
       
-      if (!context.mounted || _isModalOpen) return;
-      _isModalOpen = true;
+      if (!context.mounted) return;
       final confirmed = await showModalBottomSheet<bool>(
         context: context,
         backgroundColor: Colors.transparent,
@@ -334,7 +336,6 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       );
 
-      _isModalOpen = false;
       if (!mounted) return;
       if (confirmed != true) return;
 
@@ -382,6 +383,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _isSearching = false;
       _searchController.clear();
     });
+    _searchDebounce?.cancel();
     _applyFilters();
     _searchFocusNode.unfocus();
   }
@@ -397,9 +399,8 @@ class _HomeScreenState extends State<HomeScreen> {
     return GestureDetector(
       onTap: onTap,
       onLongPress: onLongPress,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeInOut,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected ? _getPrimaryColor(context) : Theme.of(context).cardColor,
@@ -471,7 +472,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     isDense: true,
                     contentPadding: EdgeInsets.zero,
                   ),
-                  onChanged: _filterProfiles,
+                  onChanged: _onSearchChanged,
                   onSubmitted: (_) {
                     _searchFocusNode.unfocus();
                   },
@@ -519,7 +520,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       icon: Icon(LucideIcons.x, size: 24, color: context.iconColor),
                       onPressed: () {
                         _searchController.clear();
-                        _filterProfiles('');
+                        _searchDebounce?.cancel();
+                        _applyFilters();
                       },
                       padding: EdgeInsets.zero,
                       mouseCursor: SystemMouseCursors.basic,
@@ -565,6 +567,7 @@ class _HomeScreenState extends State<HomeScreen> {
               child: ListView(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 20),
+                physics: const BouncingScrollPhysics(),
                 children: [
                   // Кнопка создания новой группы
                   Padding(

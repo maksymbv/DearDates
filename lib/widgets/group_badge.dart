@@ -17,7 +17,7 @@ class GroupBadge extends StatelessWidget {
     return Text(
       groupName,
       style: AppTextStyles.caption(context).copyWith(
-        fontSize: 11,
+        fontSize: 13,
         color: primaryColor,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.3,

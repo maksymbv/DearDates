@@ -241,7 +241,12 @@ class _EditGiftScreenState extends State<EditGiftScreen> {
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 20,
+          bottom: MediaQuery.of(context).padding.bottom + 200,
+        ),
         children: [
           // Карточка с полями
           Container(

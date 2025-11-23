@@ -88,7 +88,7 @@ class ProfileCard extends StatelessWidget {
                       ),
                     ),
                     if (profile.groupId != null && groupName != null) ...[
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 8),
                       GroupBadge(
                         groupName: groupName!,
                         primaryColor: primaryColor,
@@ -102,7 +102,7 @@ class ProfileCard extends StatelessWidget {
                 const SizedBox(width: 12),
                 Text(
                   daysUntil == 0
-                      ? '🎉 ${AppLocalizations.of(context).today}'
+                      ? '${AppLocalizations.of(context).today}'
                       : '$daysUntil ${pluralDays(daysUntil, AppLocalizations.of(context))}',
                   style: AppTextStyles.caption(context).copyWith(
                     fontSize: 12,

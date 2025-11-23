@@ -127,15 +127,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
     
-    return PopScope(
-      canPop: false,
-      onPopInvoked: (didPop) {
-        if (!didPop && context.mounted) {
-          Navigator.of(context).pop();
-        }
-      },
-      child: _buildScaffold(context),
-    );
+    return _buildScaffold(context);
   }
 
   Widget _buildScaffold(BuildContext context) {
@@ -235,8 +227,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ),
       bottomNavigationBar: null,
       body: SingleChildScrollView(
-        physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.symmetric(horizontal: 20),
+        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          bottom: MediaQuery.of(context).padding.bottom + 20,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -277,7 +273,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                     // Group badge
                     if (profile.groupId != null) ...[
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 14),
                       Builder(
                         builder: (context) {
                           try {
@@ -456,30 +452,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(
               children: [
-                // Checkbox circle
-                GestureDetector(
-                  onTap: () => _toggleGiftStatus(gift.id),
-                  child: Container(
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: gift.isGiven ? primaryColor : Colors.transparent,
-                      border: Border.all(
-                        color: gift.isGiven ? primaryColor : context.secondaryTextColor,
-                        width: 2,
-                      ),
-                    ),
-                    child: gift.isGiven
-                        ? Icon(
-                            LucideIcons.check,
-                            size: 16,
-                            color: Colors.white,
-                          )
-                        : null,
-                  ),
-                ),
-                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -507,6 +479,30 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ),
                       ],
                     ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Checkbox circle
+                GestureDetector(
+                  onTap: () => _toggleGiftStatus(gift.id),
+                  child: Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: gift.isGiven ? primaryColor : Colors.transparent,
+                      border: Border.all(
+                        color: gift.isGiven ? primaryColor : context.secondaryTextColor,
+                        width: 2,
+                      ),
+                    ),
+                    child: gift.isGiven
+                        ? Icon(
+                            LucideIcons.check,
+                            size: 16,
+                            color: Colors.white,
+                          )
+                        : null,
                   ),
                 ),
               ],

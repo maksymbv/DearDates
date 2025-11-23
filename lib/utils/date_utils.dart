@@ -64,8 +64,13 @@ DateTime calculateNextBirthday(DateTime birthdate) {
       currentYearBirthday = DateTime(now.year, 2, 28);
     }
     
+    // Если день рождения сегодня, возвращаем сегодняшнюю дату
+    if (currentYearBirthday.isAtSameMomentAs(today)) {
+      return currentYearBirthday;
+    }
+    
     // Если день рождения уже прошел в этом году, переходим к следующему году
-    if (currentYearBirthday.isBefore(today) || currentYearBirthday.isAtSameMomentAs(today)) {
+    if (currentYearBirthday.isBefore(today)) {
       try {
         return DateTime(now.year + 1, month, day);
       } catch (e) {
@@ -80,8 +85,13 @@ DateTime calculateNextBirthday(DateTime birthdate) {
   // Обычная обработка для других дат
   var nextBirthday = DateTime(now.year, month, day);
   
-  // Сравниваем только даты (без времени)
-  if (nextBirthday.isBefore(today) || nextBirthday.isAtSameMomentAs(today)) {
+  // Если день рождения сегодня, возвращаем сегодняшнюю дату
+  if (nextBirthday.isAtSameMomentAs(today)) {
+    return nextBirthday;
+  }
+  
+  // Если день рождения уже прошел, переходим к следующему году
+  if (nextBirthday.isBefore(today)) {
     nextBirthday = DateTime(now.year + 1, month, day);
   }
   
@@ -91,7 +101,10 @@ DateTime calculateNextBirthday(DateTime birthdate) {
 int daysUntilBirthday(DateTime birthdate) {
   final nextBirthday = calculateNextBirthday(birthdate);
   final now = DateTime.now();
-  final difference = nextBirthday.difference(now);
+  // Нормализуем обе даты до начала дня для корректного подсчета
+  final today = DateTime(now.year, now.month, now.day);
+  final birthdayNormalized = DateTime(nextBirthday.year, nextBirthday.month, nextBirthday.day);
+  final difference = birthdayNormalized.difference(today);
   return difference.inDays;
 }
 
@@ -106,7 +119,7 @@ String getBirthdayAgeText(DateTime birthdate, BuildContext context) {
   // Используем локализованные строки
   final turnsText = _getTurnsText(localizations);
   final ageText = _getAgeText(nextBirthdayAge, localizations);
-  return '$turnsText $nextBirthdayAge $ageText $birthdayDate';
+  return '$birthdayDate $turnsText $nextBirthdayAge $ageText';
 }
 
 String _getAgeText(int age, AppLocalizations localizations) {
@@ -150,11 +163,11 @@ String _getTurnsText(AppLocalizations localizations) {
   // Для разных языков может быть разный текст
   final langCode = localizations.locale.languageCode;
   if (langCode == 'ru') {
-    return 'Исполнится';
+    return 'исполнится';
   } else if (langCode == 'uk') {
-    return 'Виповниться';
+    return 'виповниться';
   } else {
-    return 'Turns';
+    return 'turns';
   }
 }
 
