@@ -11,6 +11,8 @@ class ProfileList extends StatelessWidget {
   final String Function(String?) getGroupName;
   final Future<void> Function() onRefresh;
   final Future<void> Function() onProfileUpdated;
+  final Widget? header;
+  final double? bottomPadding;
 
   const ProfileList({
     super.key,
@@ -20,6 +22,8 @@ class ProfileList extends StatelessWidget {
     required this.getGroupName,
     required this.onRefresh,
     required this.onProfileUpdated,
+    this.header,
+    this.bottomPadding,
   });
 
   @override
@@ -31,15 +35,23 @@ class ProfileList extends StatelessWidget {
       triggerMode: RefreshIndicatorTriggerMode.onEdge,
       child: ListView.builder(
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.only(
+        padding: EdgeInsets.only(
           left: 20,
           right: 20,
           top: 20,
-          bottom: 20,
+          bottom: bottomPadding ?? 100,
         ),
-        itemCount: profiles.length,
+        itemCount: profiles.length + (header != null ? 1 : 0),
         itemBuilder: (context, index) {
-          final profile = profiles[index];
+          if (header != null && index == 0) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: header!,
+            );
+          }
+          
+          final profileIndex = header != null ? index - 1 : index;
+          final profile = profiles[profileIndex];
           
           return ProfileCard(
             key: ValueKey(profile.id),

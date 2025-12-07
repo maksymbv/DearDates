@@ -3,6 +3,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:flutter_timezone/flutter_timezone.dart';
 import '../models/profile.dart';
 import '../l10n/app_localizations.dart';
 import '../utils/date_utils.dart';
@@ -28,6 +29,17 @@ class NotificationService {
 
     // Инициализация timezone
     tz.initializeTimeZones();
+    
+    // Автоматическое определение часового пояса устройства
+    try {
+      final String timeZoneName = await FlutterTimezone.getLocalTimezone();
+      tz.setLocalLocation(tz.getLocation(timeZoneName));
+      debugPrint('NotificationService: Timezone set to $timeZoneName');
+    } catch (e) {
+      // Fallback на UTC если не удалось определить
+      debugPrint('NotificationService: Failed to get local timezone, using UTC: $e');
+      tz.setLocalLocation(tz.getLocation('UTC'));
+    }
 
     // Настройки для Android
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');

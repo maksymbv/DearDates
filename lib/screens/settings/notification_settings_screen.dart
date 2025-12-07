@@ -79,17 +79,21 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 20,
-                bottom: MediaQuery.of(context).padding.bottom + 20,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+          : LayoutBuilder(
+              builder: (context, constraints) {
+                return ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                    padding: EdgeInsets.only(
+                      left: 20,
+                      right: 20,
+                      top: 20,
+                      bottom: MediaQuery.of(context).padding.bottom + 20,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                   Text(
                     localizations.reminderDaysTitle,
                     style: AppTextStyles.heading2(context).copyWith(fontSize: 18),
@@ -144,8 +148,11 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                       ],
                     ),
                   ),
-                ],
-              ),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
     );
   }

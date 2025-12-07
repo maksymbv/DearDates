@@ -41,6 +41,7 @@ dependencies:
   # Local notifications
   flutter_local_notifications: ^19.5.0
   timezone: ^0.10.1
+  flutter_timezone: ^3.0.1
   
   # Image picker for profile photos
   image_picker: ^1.1.2
@@ -54,6 +55,12 @@ dependencies:
   
   # Date formatting
   intl: ^0.20.2
+  
+  # URL launcher for external links
+  url_launcher: ^6.3.1
+  
+  # Calendar for birthday view
+  table_calendar: ^3.1.2
 
 dev_dependencies:
   flutter_test:

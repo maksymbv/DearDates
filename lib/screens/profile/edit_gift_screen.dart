@@ -241,6 +241,7 @@ class _EditGiftScreenState extends State<EditGiftScreen> {
         ),
       ),
       body: ListView(
+        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
         padding: EdgeInsets.only(
           left: 20,
           right: 20,

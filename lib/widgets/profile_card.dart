@@ -66,7 +66,7 @@ class ProfileCard extends StatelessWidget {
                 fontSize: 28,
               ),
               const SizedBox(width: 16),
-              // Information
+              // Information - Имя и группа
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -77,16 +77,9 @@ class ProfileCard extends StatelessWidget {
                       style: AppTextStyles.heading2(context).copyWith(
                         fontSize: 16,
                       ),
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      formatDateShort(profile.birthdate, Localizations.localeOf(context)),
-                      style: AppTextStyles.secondary(context).copyWith(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: context.textColor,
-                      ),
-                    ),
+                    // Бейдж группы
                     if (profile.groupId != null && groupName != null) ...[
                       const SizedBox(height: 8),
                       GroupBadge(
@@ -97,20 +90,35 @@ class ProfileCard extends StatelessWidget {
                   ],
                 ),
               ),
-              // Counter of days in the center
-              if (daysUntil <= 30 && daysUntil >= 0) ...[
-                const SizedBox(width: 12),
-                Text(
-                  daysUntil == 0
-                      ? '${AppLocalizations.of(context).today}'
-                      : '$daysUntil ${pluralDays(daysUntil, AppLocalizations.of(context))}',
-                  style: AppTextStyles.caption(context).copyWith(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: primaryColor,
+              const SizedBox(width: 12),
+              // Дата и счетчик дней справа
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    formatDateShort(profile.birthdate, Localizations.localeOf(context)),
+                    style: AppTextStyles.secondary(context).copyWith(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: context.textColor,
+                    ),
                   ),
-                ),
-              ],
+                  if (daysUntil <= 30 && daysUntil >= 0) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      daysUntil == 0
+                          ? AppLocalizations.of(context).today
+                          : '${AppLocalizations.of(context).daysUntil} $daysUntil ${pluralDays(daysUntil, AppLocalizations.of(context))}',
+                      style: AppTextStyles.caption(context).copyWith(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: primaryColor,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ],
           ),
         ),

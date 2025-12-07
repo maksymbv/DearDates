@@ -11,14 +11,18 @@ import '../../widgets/profile_list.dart';
 import '../../widgets/group_menu_dialog.dart';
 import '../../widgets/create_group_dialog.dart';
 import '../../widgets/edit_group_dialog.dart';
+import '../../widgets/bottom_nav_bar.dart';
 import '../../themes/app_text_styles.dart';
 import '../../themes/theme_helper.dart';
 import '../../l10n/app_localizations.dart';
 import '../profile/add_profile_screen.dart';
 import '../settings/settings_screen.dart';
+import '../calendar/calendar_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final bool showBottomNav;
+  
+  const HomeScreen({super.key, this.showBottomNav = true});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -51,6 +55,66 @@ class _HomeScreenState extends State<HomeScreen> {
   }
   
   Color _getPrimaryColor(BuildContext context) => Theme.of(context).colorScheme.primary;
+
+  Widget _buildGroupsHeader() {
+    if (_profiles.isEmpty) return const SizedBox.shrink();
+    
+    return Container(
+      height: 48,
+      margin: const EdgeInsets.only(left: 20, right: 20, bottom: 8),
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        children: [
+          // Кнопка создания новой группы
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Material(
+              color: Theme.of(context).cardColor,
+              shape: const CircleBorder(),
+              child: InkWell(
+                onTap: () => _showCreateGroupDialog(context),
+                customBorder: const CircleBorder(),
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  alignment: Alignment.center,
+                  child: Icon(
+                    LucideIcons.plus,
+                    size: 18,
+                    color: context.iconColor,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // Кнопка "Все"
+          _buildGroupFilterButton(
+            label: AppLocalizations.of(context).all,
+            isSelected: _selectedGroupId == null,
+            count: _selectedGroupId == null ? _profiles.length : null,
+            onTap: () => _selectGroup(null),
+          ),
+          const SizedBox(width: 8),
+          // Кнопки для каждой группы
+          ..._groups.map((group) {
+            final count = _profiles.where((p) => p.groupId == group.id).length;
+            final isSelected = _selectedGroupId == group.id;
+            return Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: _buildGroupFilterButton(
+                label: group.name,
+                isSelected: isSelected,
+                count: isSelected ? count : null,
+                onTap: () => _selectGroup(group.id),
+                onLongPress: () => _showGroupMenu(context, group),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
 
   Future<void> _initializeAndLoad() async {
     // Инициализируем уведомления и планируем их
@@ -97,6 +161,8 @@ class _HomeScreenState extends State<HomeScreen> {
         _groups = groups;
         _isLoading = false;
       });
+      
+      debugPrint('HomeScreen: loaded ${profiles.length} profiles');
       
       // Применяем фильтрацию
       _applyFilters();
@@ -158,6 +224,8 @@ class _HomeScreenState extends State<HomeScreen> {
           .toList();
       
       _sortProfiles(_filteredProfiles);
+      
+      debugPrint('HomeScreen: filtered to ${_filteredProfiles.length} profiles (query: $query, groupId: $_selectedGroupId)');
     });
   }
 
@@ -557,231 +625,166 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      body: Column(
+      body: Stack(
         children: [
-          // Фильтр по группам
-          if (!_isLoading && _profiles.isNotEmpty)
-            Container(
-              height: 48,
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                physics: const BouncingScrollPhysics(),
-                children: [
-                  // Кнопка создания новой группы
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: Material(
-                      color: Theme.of(context).cardColor,
-                      shape: const CircleBorder(),
-                      child: InkWell(
-                        onTap: () => _showCreateGroupDialog(context),
-                        customBorder: const CircleBorder(),
-                        child: Container(
-                          width: 32,
-                          height: 32,
-                          alignment: Alignment.center,
-                          child: Icon(
-                            LucideIcons.plus,
-                            size: 18,
-                            color: context.iconColor,
+          Column(
+            children: [
+              // Фильтр по группам
+              if (!_isLoading && _profiles.isNotEmpty)
+                Container(
+                  height: 48,
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    physics: const BouncingScrollPhysics(),
+                    children: [
+                      // Кнопка создания новой группы
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: Material(
+                          color: Theme.of(context).cardColor,
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            onTap: () => _showCreateGroupDialog(context),
+                            customBorder: const CircleBorder(),
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              alignment: Alignment.center,
+                              child: Icon(
+                                LucideIcons.plus,
+                                size: 18,
+                                color: context.iconColor,
+                              ),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                  // Кнопка "Все"
-                  _buildGroupFilterButton(
-                    label: AppLocalizations.of(context).all,
-                    isSelected: _selectedGroupId == null,
-                    count: _selectedGroupId == null ? _profiles.length : null,
-                    onTap: () => _selectGroup(null),
-                  ),
-                  const SizedBox(width: 8),
-                  // Кнопки для каждой группы
-                  ..._groups.map((group) {
-                    // Подсчитываем количество профилей в группе
-                    final count = _profiles.where((p) => p.groupId == group.id).length;
-                    final isSelected = _selectedGroupId == group.id;
-                    return Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: _buildGroupFilterButton(
-                        label: group.name,
-                        isSelected: isSelected,
-                        count: isSelected ? count : null, // Показываем количество только для активной группы
-                        onTap: () => _selectGroup(group.id),
-                        onLongPress: () => _showGroupMenu(context, group),
+                      // Кнопка "Все"
+                      _buildGroupFilterButton(
+                        label: AppLocalizations.of(context).all,
+                        isSelected: _selectedGroupId == null,
+                        count: _selectedGroupId == null ? _profiles.length : null,
+                        onTap: () => _selectGroup(null),
                       ),
-                    );
-                  }),
-                ],
-              ),
-            ),
-          // Основной контент
-          Expanded(
-            child: _isLoading
-                ? Center(
-                    child: CircularProgressIndicator(
-                      color: _getPrimaryColor(context).withOpacity(0.7),
-                    ),
-                  )
-                : _profiles.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(24),
-                        child: Icon(
-                          LucideIcons.cake,
-                          size: 64,
-                          color: _getPrimaryColor(context).withOpacity(0.7),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Text(
-                        AppLocalizations.of(context).noProfilesYet,
-                        style: AppTextStyles.heading2(context).copyWith(
-                          fontSize: 20,
-                          color: context.secondaryTextColor,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        AppLocalizations.of(context).addFirstProfile,
-                        style: AppTextStyles.caption(context).copyWith(
-                          fontSize: 15,
-                          color: context.secondaryTextColor.withOpacity(0.6),
-                        ),
-                      ),
+                      const SizedBox(width: 8),
+                      // Кнопки для каждой группы
+                      ..._groups.map((group) {
+                        final count = _profiles.where((p) => p.groupId == group.id).length;
+                        final isSelected = _selectedGroupId == group.id;
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: _buildGroupFilterButton(
+                            label: group.name,
+                            isSelected: isSelected,
+                            count: isSelected ? count : null,
+                            onTap: () => _selectGroup(group.id),
+                            onLongPress: () => _showGroupMenu(context, group),
+                          ),
+                        );
+                      }),
                     ],
                   ),
-                )
-              : Column(
-                  children: [
-                    // Индикатор результатов поиска
-                    ValueListenableBuilder<TextEditingValue>(
+                ),
+              // Основной контент
+              Expanded(
+                child: _isLoading
+                    ? Center(
+                        child: CircularProgressIndicator(
+                          color: _getPrimaryColor(context).withOpacity(0.7),
+                        ),
+                      )
+                    : _profiles.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(24),
+                            child: Icon(
+                              LucideIcons.cake,
+                              size: 64,
+                              color: _getPrimaryColor(context).withOpacity(0.7),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                          Text(
+                            AppLocalizations.of(context).noProfilesYet,
+                            style: AppTextStyles.heading2(context).copyWith(
+                              fontSize: 20,
+                              color: context.secondaryTextColor,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            AppLocalizations.of(context).addFirstProfile,
+                            style: AppTextStyles.caption(context).copyWith(
+                              fontSize: 15,
+                              color: context.secondaryTextColor.withOpacity(0.6),
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ValueListenableBuilder<TextEditingValue>(
                       valueListenable: _searchController,
                       builder: (context, value, child) {
-                        if (_isSearching && value.text.isNotEmpty) {
-                          return Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).cardColor,
-                              border: Border(
-                                bottom: BorderSide(
-                                  color: Theme.of(context).dividerColor,
-                                  width: 1,
-                                ),
-                              ),
-                            ),
-                            child: Row(
+                        if (_filteredProfiles.isEmpty && _isSearching && value.text.isNotEmpty) {
+                          return Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(
-                                  LucideIcons.search,
-                                  size: 16,
-                                  color: context.textColor,
+                                  LucideIcons.x,
+                                  size: 64,
+                                  color: context.secondaryTextColor.withOpacity(0.4),
                                 ),
-                                const SizedBox(width: 8),
+                                const SizedBox(height: 16),
                                 Text(
-                                  _filteredProfiles.isEmpty
-                                      ? AppLocalizations.of(context).nothingFound
-                                      : '${AppLocalizations.of(context).found}: ${_filteredProfiles.length}',
+                                  AppLocalizations.of(context).nothingFound,
+                                  style: AppTextStyles.heading2(context).copyWith(
+                                    fontSize: 18,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  AppLocalizations.of(context).tryDifferentQuery,
                                   style: AppTextStyles.caption(context).copyWith(
-                                    fontWeight: FontWeight.w500,
+                                    fontSize: 14,
+                                    color: context.secondaryTextColor.withOpacity(0.6),
                                   ),
                                 ),
                               ],
                             ),
                           );
                         }
-                        return const SizedBox.shrink();
-                      },
-                    ),
-                    // Список профилей
-                    Expanded(
-                      child: ValueListenableBuilder<TextEditingValue>(
-                        valueListenable: _searchController,
-                        builder: (context, value, child) {
-                          if (_filteredProfiles.isEmpty && _isSearching && value.text.isNotEmpty) {
-                            return Center(
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    LucideIcons.x,
-                                    size: 64,
-                                    color: context.secondaryTextColor.withOpacity(0.4),
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    AppLocalizations.of(context).nothingFound,
-                                    style: AppTextStyles.heading2(context).copyWith(
-                                      fontSize: 18,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    AppLocalizations.of(context).tryDifferentQuery,
-                                    style: AppTextStyles.caption(context).copyWith(
-                                      fontSize: 14,
-                                      color: context.secondaryTextColor.withOpacity(0.6),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            );
-                          }
-                          return ProfileList(
+                        return RepaintBoundary(
+                          child: ProfileList(
                             profiles: _filteredProfiles,
                             groups: _groups,
                             primaryColor: _getPrimaryColor(context),
                             getGroupName: _getGroupName,
                             onRefresh: _loadProfiles,
                             onProfileUpdated: _loadProfiles,
-                          );
-                        },
-                      ),
+                            bottomPadding: 110,
+                          ),
+                        );
+                      },
                     ),
-                  ],
-                ),
+              ),
+            ],
           ),
+          // Floating меню снизу
+          if (widget.showBottomNav)
+            BottomNavBar(
+              currentPage: NavPage.home,
+              primaryColor: _getPrimaryColor(context),
+              onProfileAdded: _loadProfiles,
+            ),
         ],
       ),
-      floatingActionButton: Material(
-        color: _getPrimaryColor(context),
-        shape: const CircleBorder(),
-        child: InkWell(
-          onTap: () async {
-            await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const AddProfileScreen(),
-              ),
-            );
-            if (!mounted) return;
-            await _loadProfiles();
-            if (!mounted) return;
-            // Уведомления автоматически обновляются в StorageService.addProfile()
-          },
-          customBorder: const CircleBorder(),
-          hoverColor: Colors.transparent,
-          splashColor: Colors.transparent,
-          highlightColor: Colors.transparent,
-          child: Container(
-            width: 60,
-            height: 60,
-            alignment: Alignment.center,
-            child: Icon(LucideIcons.plus, color: Colors.white, size: 24),
-          ),
-        ),
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 }

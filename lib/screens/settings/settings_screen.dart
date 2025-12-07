@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../services/notification_service.dart';
 import '../../services/theme_service.dart';
 import '../../l10n/app_localizations.dart';
@@ -109,6 +111,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         AppCard(
                           padding: EdgeInsets.zero,
                           child: ListTile(
+                            leading: Icon(
+                              LucideIcons.bell,
+                              size: 24,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
                             title: Row(
                               children: [
                                 Text(
@@ -147,6 +154,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         AppCard(
                           padding: EdgeInsets.zero,
                           child: ListTile(
+                            leading: Icon(
+                              LucideIcons.palette,
+                              size: 24,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
                             title: Row(
                               children: [
                                 Text(
@@ -187,11 +199,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 // Подпись внизу
                 Padding(
                   padding: const EdgeInsets.only(bottom: 24),
-                  child: Text(
-                    localizations.madeBy,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: context.secondaryTextColor.withOpacity(0.6),
+                  child: RichText(
+                    text: TextSpan(
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: context.secondaryTextColor,
+                      ),
+                      children: [
+                        TextSpan(text: localizations.madeBy),
+                      ],
                     ),
                   ),
                 ),

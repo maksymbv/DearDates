@@ -124,6 +124,8 @@ class AppLocalizations {
   String get selectFromGallery => _getString('selectFromGallery');
   String get takePhoto => _getString('takePhoto');
   String get deletePhoto => _getString('deletePhoto');
+  String get previewPhoto => _getString('previewPhoto');
+  String get apply => _getString('apply');
 
   // Возраст
   String get yearsOld => _getString('yearsOld');
@@ -161,6 +163,8 @@ class AppLocalizations {
   String get birthdayToday => _getString('birthdayToday');
   String get birthdayTodayBody => _getString('birthdayTodayBody');
   String get birthdayReminderBody => _getString('birthdayReminderBody');
+  String get birthdays => _getString('birthdays');
+  String get noBirthdaysInMonth => _getString('noBirthdaysInMonth');
   String get notificationChannelName => _getString('notificationChannelName');
   String get notificationChannelDescription =>
       _getString('notificationChannelDescription');
@@ -251,10 +255,12 @@ class AppLocalizations {
       'selectFromGallery': 'Select from Gallery',
       'takePhoto': 'Take Photo',
       'deletePhoto': 'Delete Photo',
+      'previewPhoto': 'Preview Photo',
+      'apply': 'Apply',
       'yearsOld': 'years old',
       'year': 'year',
       'years': 'years',
-      'today': 'Today!',
+      'today': 'Today',
       'daysUntil': 'In',
       'create': 'Create',
       'editAction': 'Edit',
@@ -282,11 +288,13 @@ class AppLocalizations {
       'birthdayTodayBody': 'Today is {name}\'s birthday!',
       'birthdayReminderBody':
           'In {days} {daysText} {name}\'s birthday ({date})',
+      'birthdays': 'Birthdays',
+      'noBirthdaysInMonth': 'No birthdays in this month',
       'notificationChannelName': 'Birthday Reminders',
       'notificationChannelDescription':
           'Notifications about upcoming birthdays',
-      'displayMode': 'Display Mode',
-      'selectLightOrDark': 'Choose light or dark theme',
+      'displayMode': 'Dark Mode',
+      'selectLightOrDark': 'Enable or disable dark theme',
       'darkTheme': 'Dark Theme',
       'lightTheme': 'Light Theme',
       'accentColor': 'Accent Color',
@@ -303,7 +311,7 @@ class AppLocalizations {
       'deleteIdea': 'Delete idea',
       'idea': 'Idea',
       'description': 'Description',
-      'madeBy': 'Made by Max with ❤️',
+      'madeBy': 'Made for special dates ✨',
     },
     'ru': {
       'settings': 'Настройки',
@@ -363,10 +371,12 @@ class AppLocalizations {
       'selectFromGallery': 'Выбрать из галереи',
       'takePhoto': 'Сделать фото',
       'deletePhoto': 'Удалить фото',
+      'previewPhoto': 'Предпросмотр фото',
+      'apply': 'Применить',
       'yearsOld': 'лет',
       'year': 'год',
       'years': 'лет',
-      'today': 'Сегодня!',
+      'today': 'Сегодня',
       'daysUntil': 'Через',
       'create': 'Создать',
       'editAction': 'Редактировать',
@@ -394,11 +404,13 @@ class AppLocalizations {
       'birthdayTodayBody': 'Сегодня день рождения {name}!',
       'birthdayReminderBody':
           'Через {days} {daysText} день рождения {name} ({date})',
+      'birthdays': 'Дни рождения',
+      'noBirthdaysInMonth': 'Нет дней рождения в этом месяце',
       'notificationChannelName': 'Напоминания о днях рождения',
       'notificationChannelDescription':
           'Уведомления о предстоящих днях рождения',
-      'displayMode': 'Режим отображения',
-      'selectLightOrDark': 'Выберите светлую или темную тему',
+      'displayMode': 'Темный режим',
+      'selectLightOrDark': 'Включить или выключить темную тему',
       'darkTheme': 'Темная тема',
       'lightTheme': 'Светлая тема',
       'accentColor': 'Акцентный цвет',
@@ -415,7 +427,7 @@ class AppLocalizations {
       'deleteIdea': 'Удалить идею',
       'idea': 'Идея',
       'description': 'Описание',
-      'madeBy': 'Сделано Максом с ❤️',
+      'madeBy': 'Создано для особенных дат ✨',
     },
     'uk': {
       'settings': 'Налаштування',
@@ -474,10 +486,12 @@ class AppLocalizations {
       'selectFromGallery': 'Вибрати з галереї',
       'takePhoto': 'Зробити фото',
       'deletePhoto': 'Видалити фото',
+      'previewPhoto': 'Попередній перегляд фото',
+      'apply': 'Застосувати',
       'yearsOld': 'років',
       'year': 'рік',
       'years': 'років',
-      'today': 'Сьогодні!',
+      'today': 'Сьогодні',
       'daysUntil': 'Через',
       'create': 'Створити',
       'editAction': 'Редагувати',
@@ -505,11 +519,13 @@ class AppLocalizations {
       'birthdayTodayBody': 'Сьогодні день народження {name}!',
       'birthdayReminderBody':
           'Через {days} {daysText} день народження {name} ({date})',
+      'birthdays': 'Дні народження',
+      'noBirthdaysInMonth': 'Немає днів народження в цьому місяці',
       'notificationChannelName': 'Нагадування про дні народження',
       'notificationChannelDescription':
           'Сповіщення про майбутні дні народження',
-      'displayMode': 'Режим відображення',
-      'selectLightOrDark': 'Виберіть світлу або темну тему',
+      'displayMode': 'Темний режим',
+      'selectLightOrDark': 'Увімкнути або вимкнути темну тему',
       'darkTheme': 'Темна тема',
       'lightTheme': 'Світла тема',
       'accentColor': 'Акцентний колір',
@@ -526,7 +542,7 @@ class AppLocalizations {
       'deleteIdea': 'Видалити ідею',
       'idea': 'Ідея',
       'description': 'Опис',
-      'madeBy': 'Зроблено Максом з ❤️',
+      'madeBy': 'Створено для особливих дат ✨',
     },
   };
 }

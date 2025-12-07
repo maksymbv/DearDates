@@ -500,15 +500,16 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
       body: Form(
         key: _formKey,
         child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
           padding: EdgeInsets.only(
-            bottom: MediaQuery.of(context).padding.bottom + 20,
+            bottom: MediaQuery.of(context).padding.bottom,
           ),
           children: [
             // Карточка с полями
             Container(
               width: double.infinity,
               child: Padding(
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [

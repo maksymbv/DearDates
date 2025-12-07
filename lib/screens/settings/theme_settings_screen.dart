@@ -72,17 +72,21 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
                 final currentTheme = _themeService.currentTheme;
                 final isDarkMode = _themeService.isDarkMode;
                 
-                return SingleChildScrollView(
-                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                  padding: EdgeInsets.only(
-                    left: 20,
-                    right: 20,
-                    top: 20,
-                    bottom: MediaQuery.of(context).padding.bottom + 20,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
+                return LayoutBuilder(
+                  builder: (context, constraints) {
+                    return ConstrainedBox(
+                      constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                      child: SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                        padding: EdgeInsets.only(
+                          left: 20,
+                          right: 20,
+                          top: 20,
+                          bottom: MediaQuery.of(context).padding.bottom + 20,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                       // Переключатель светлая/темная тема
                       Text(
                         localizations.displayMode,
@@ -98,12 +102,12 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
                         padding: EdgeInsets.zero,
                         child: ListTile(
                           leading: Icon(
-                            isDarkMode ? LucideIcons.moon : LucideIcons.sun,
+                            LucideIcons.moon,
                             size: 24,
-                            color: context.iconColor,
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                           title: Text(
-                            isDarkMode ? localizations.darkTheme : localizations.lightTheme,
+                            localizations.darkTheme,
                             style: AppTextStyles.body(context).copyWith(
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
@@ -175,8 +179,11 @@ class _ThemeSettingsScreenState extends State<ThemeSettingsScreen> {
                           ),
                         );
                       }),
-                    ],
-                  ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
                 );
               },
             ),
