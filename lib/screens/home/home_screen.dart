@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -8,16 +9,13 @@ import '../../services/notification_service.dart';
 import '../../services/group_service.dart';
 import '../../utils/date_utils.dart';
 import '../../widgets/profile_list.dart';
-import '../../widgets/group_menu_dialog.dart';
 import '../../widgets/create_group_dialog.dart';
 import '../../widgets/edit_group_dialog.dart';
 import '../../widgets/bottom_nav_bar.dart';
 import '../../themes/app_text_styles.dart';
 import '../../themes/theme_helper.dart';
 import '../../l10n/app_localizations.dart';
-import '../profile/add_profile_screen.dart';
 import '../settings/settings_screen.dart';
-import '../calendar/calendar_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final bool showBottomNav;
@@ -56,66 +54,6 @@ class _HomeScreenState extends State<HomeScreen> {
   
   Color _getPrimaryColor(BuildContext context) => Theme.of(context).colorScheme.primary;
 
-  Widget _buildGroupsHeader() {
-    if (_profiles.isEmpty) return const SizedBox.shrink();
-    
-    return Container(
-      height: 48,
-      margin: const EdgeInsets.only(left: 20, right: 20, bottom: 8),
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        physics: const BouncingScrollPhysics(),
-        children: [
-          // Кнопка создания новой группы
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: Material(
-              color: Theme.of(context).cardColor,
-              shape: const CircleBorder(),
-              child: InkWell(
-                onTap: () => _showCreateGroupDialog(context),
-                customBorder: const CircleBorder(),
-                child: Container(
-                  width: 32,
-                  height: 32,
-                  alignment: Alignment.center,
-                  child: Icon(
-                    LucideIcons.plus,
-                    size: 18,
-                    color: context.iconColor,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          // Кнопка "Все"
-          _buildGroupFilterButton(
-            label: AppLocalizations.of(context).all,
-            isSelected: _selectedGroupId == null,
-            count: _selectedGroupId == null ? _profiles.length : null,
-            onTap: () => _selectGroup(null),
-          ),
-          const SizedBox(width: 8),
-          // Кнопки для каждой группы
-          ..._groups.map((group) {
-            final count = _profiles.where((p) => p.groupId == group.id).length;
-            final isSelected = _selectedGroupId == group.id;
-            return Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: _buildGroupFilterButton(
-                label: group.name,
-                isSelected: isSelected,
-                count: isSelected ? count : null,
-                onTap: () => _selectGroup(group.id),
-                onLongPress: () => _showGroupMenu(context, group),
-              ),
-            );
-          }),
-        ],
-      ),
-    );
-  }
-
   Future<void> _initializeAndLoad() async {
     // Инициализируем уведомления и планируем их
     try {
@@ -128,7 +66,9 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     } catch (e) {
       // Игнорируем ошибки инициализации уведомлений
-      debugPrint('Failed to initialize notifications: $e');
+      if (kDebugMode) {
+        debugPrint('Failed to initialize notifications: $e');
+      }
     }
     
     // Загружаем профили
@@ -162,12 +102,16 @@ class _HomeScreenState extends State<HomeScreen> {
         _isLoading = false;
       });
       
-      debugPrint('HomeScreen: loaded ${profiles.length} profiles');
+      if (kDebugMode) {
+        debugPrint('HomeScreen: loaded ${profiles.length} profiles');
+      }
       
       // Применяем фильтрацию
       _applyFilters();
     } catch (e) {
-      debugPrint('Error loading profiles: $e');
+      if (kDebugMode) {
+        debugPrint('Error loading profiles: $e');
+      }
       if (!mounted) return;
       setState(() {
         _profiles = [];
@@ -205,33 +149,46 @@ class _HomeScreenState extends State<HomeScreen> {
         ? _searchController.text.toLowerCase().trim()
         : null;
     
-    setState(() {
-      _filteredProfiles = _profiles
-          .where((profile) =>
-              _selectedGroupId == null || profile.groupId == _selectedGroupId)
-          .where((profile) {
-            if (query == null) return true;
-            
-            final nameMatch = _startsWithWord(profile.name, query);
-            final notesMatch = profile.notes != null 
-                ? _startsWithWord(profile.notes!, query)
-                : false;
-            final giftsMatch = profile.gifts.any(
-                (gift) => _startsWithWord(gift.idea, query));
-            
-            return nameMatch || notesMatch || giftsMatch;
-          })
-          .toList();
+    // Вычисляем отфильтрованный список
+    final filtered = _profiles
+        .where((profile) =>
+            _selectedGroupId == null || profile.groupId == _selectedGroupId)
+        .where((profile) {
+          if (query == null) return true;
+          
+          final nameMatch = _startsWithWord(profile.name, query);
+          final notesMatch = profile.notes != null 
+              ? _startsWithWord(profile.notes!, query)
+              : false;
+          final giftsMatch = profile.gifts.any(
+              (gift) => _startsWithWord(gift.idea, query));
+          
+          return nameMatch || notesMatch || giftsMatch;
+        })
+        .toList();
+    
+    _sortProfiles(filtered);
+    
+    // Обновляем только если результат изменился
+    if (_filteredProfiles.length != filtered.length || 
+        !_listEquals(_filteredProfiles, filtered)) {
+      setState(() {
+        _filteredProfiles = filtered;
+      });
       
-      _sortProfiles(_filteredProfiles);
-      
-      debugPrint('HomeScreen: filtered to ${_filteredProfiles.length} profiles (query: $query, groupId: $_selectedGroupId)');
-    });
+      if (kDebugMode) {
+        debugPrint('HomeScreen: filtered to ${_filteredProfiles.length} profiles (query: $query, groupId: $_selectedGroupId)');
+      }
+    }
   }
-
-  void _filterProfiles(String query) {
-    // deprecated path - keep for compatibility
-    _applyFilters();
+  
+  // Вспомогательный метод для сравнения списков профилей
+  bool _listEquals(List<Profile> a, List<Profile> b) {
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i].id != b[i].id) return false;
+    }
+    return true;
   }
 
   void _onSearchChanged(String query) {
@@ -246,9 +203,9 @@ class _HomeScreenState extends State<HomeScreen> {
   // Выбор группы для фильтрации
   void _selectGroup(String? groupId) {
     if (!mounted) return;
-    setState(() {
-      _selectedGroupId = groupId;
-    });
+    if (_selectedGroupId == groupId) return; // Не обновляем, если группа не изменилась
+    
+    _selectedGroupId = groupId;
     _applyFilters();
   }
 
@@ -447,10 +404,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _stopSearch() {
     if (!mounted) return;
-    setState(() {
-      _isSearching = false;
-      _searchController.clear();
-    });
+    _isSearching = false;
+    _searchController.clear();
     _searchDebounce?.cancel();
     _applyFilters();
     _searchFocusNode.unfocus();

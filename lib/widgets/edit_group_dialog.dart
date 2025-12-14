@@ -3,7 +3,6 @@ import '../models/group.dart';
 import '../l10n/app_localizations.dart';
 import '../themes/app_text_styles.dart';
 import '../themes/app_button_styles.dart';
-import '../themes/theme_helper.dart';
 
 /// Result of editing group dialog
 class EditGroupResult {
@@ -16,8 +15,6 @@ class EditGroupResult {
 /// Edit group dialog
 class EditGroupDialog {
   static Future<EditGroupResult?> show(BuildContext context, Group group, Color primaryColor) async {
-    final localizations = AppLocalizations.of(context);
-    
     return await showModalBottomSheet<EditGroupResult>(
       context: context,
       backgroundColor: Colors.transparent,

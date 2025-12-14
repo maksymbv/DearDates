@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -445,17 +444,6 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
     _nameController.dispose();
     _notesController.dispose();
     super.dispose();
-  }
-
-  // Получение более темного оттенка цвета для градиента
-  Color _getDarkerShade(int color) {
-    final baseColor = Color(color);
-    return Color.fromRGBO(
-      (baseColor.red * 0.85).round().clamp(0, 255),
-      (baseColor.green * 0.85).round().clamp(0, 255),
-      (baseColor.blue * 0.85).round().clamp(0, 255),
-      1.0,
-    );
   }
 
   @override

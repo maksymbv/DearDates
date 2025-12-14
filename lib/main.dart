@@ -1,9 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'models/profile.dart';
-import 'dart:io';
 import 'models/group.dart';
 import 'services/theme_service.dart';
 import 'services/notification_service.dart';
@@ -33,30 +33,32 @@ void main() async {
   await Hive.openBox<Profile>('profiles');
   await Hive.openBox<Group>('groups');
 
-  // Логируем содержимое папки с фото (для отладки пропажи картинок)
-  try {
-    final photoService = PhotoService();
-    await photoService.logPhotosDirectoryContents();
-  } catch (e) {
-    debugPrint('Failed to list profile photos: $e');
-  }
-
-  // Логируем профили и их photoPath + существование файла
-  try {
-    final profilesBox = Hive.box<Profile>('profiles');
-    if (profilesBox.isEmpty) {
-      debugPrint('No profiles found in Hive.');
-    } else {
+  // Логируем содержимое папки с фото (только в debug режиме)
+  if (kDebugMode) {
+    try {
       final photoService = PhotoService();
-      for (final p in profilesBox.values) {
-        final storedPath = p.photoPath;
-        final resolved = photoService.resolvePhotoPathSync(storedPath);
-        final exists = resolved != null;
-        debugPrint('Profile ${p.id}: photoPath="$storedPath" exists=$exists');
-      }
+      await photoService.logPhotosDirectoryContents();
+    } catch (e) {
+      debugPrint('Failed to list profile photos: $e');
     }
-  } catch (e) {
-    debugPrint('Failed to log profiles/photoPath: $e');
+
+    // Логируем профили и их photoPath + существование файла
+    try {
+      final profilesBox = Hive.box<Profile>('profiles');
+      if (profilesBox.isEmpty) {
+        debugPrint('No profiles found in Hive.');
+      } else {
+        final photoService = PhotoService();
+        for (final p in profilesBox.values) {
+          final storedPath = p.photoPath;
+          final resolved = photoService.resolvePhotoPathSync(storedPath);
+          final exists = resolved != null;
+          debugPrint('Profile ${p.id}: photoPath="$storedPath" exists=$exists');
+        }
+      }
+    } catch (e) {
+      debugPrint('Failed to log profiles/photoPath: $e');
+    }
   }
   
   // Инициализация часовых поясов для уведомлений
@@ -72,7 +74,9 @@ void main() async {
     await notificationService.initialize();
   } catch (e) {
     // Игнорируем ошибки инициализации уведомлений
-    debugPrint('Failed to initialize notifications: $e');
+    if (kDebugMode) {
+      debugPrint('Failed to initialize notifications: $e');
+    }
   }
   
   runApp(MyApp(themeService: themeService));

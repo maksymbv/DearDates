@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'home/home_screen.dart';
 import 'calendar/calendar_screen.dart';
 import '../widgets/bottom_nav_bar.dart';
-import '../themes/theme_helper.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});

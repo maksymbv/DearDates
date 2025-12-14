@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -34,10 +35,14 @@ class NotificationService {
     try {
       final String timeZoneName = await FlutterTimezone.getLocalTimezone();
       tz.setLocalLocation(tz.getLocation(timeZoneName));
-      debugPrint('NotificationService: Timezone set to $timeZoneName');
+      if (kDebugMode) {
+        debugPrint('NotificationService: Timezone set to $timeZoneName');
+      }
     } catch (e) {
       // Fallback на UTC если не удалось определить
-      debugPrint('NotificationService: Failed to get local timezone, using UTC: $e');
+      if (kDebugMode) {
+        debugPrint('NotificationService: Failed to get local timezone, using UTC: $e');
+      }
       tz.setLocalLocation(tz.getLocation('UTC'));
     }
 
@@ -62,11 +67,13 @@ class NotificationService {
         onDidReceiveNotificationResponse: _onNotificationTapped,
       );
       // Инициализация может вернуть bool? на некоторых платформах, игнорируем результат
-      if (initResult == null || initResult == false) {
+      if (kDebugMode && (initResult == null || initResult == false)) {
         debugPrint('Notification initialization returned false or null');
       }
     } catch (e) {
-      debugPrint('Error initializing notifications: $e');
+      if (kDebugMode) {
+        debugPrint('Error initializing notifications: $e');
+      }
       // Продолжаем работу даже если инициализация не удалась
     }
 
@@ -92,7 +99,9 @@ class NotificationService {
       return value ?? true;
     } catch (e) {
       // В случае ошибки считаем, что уведомления включены
-      debugPrint('Error getting notifications enabled state: $e');
+      if (kDebugMode) {
+        debugPrint('Error getting notifications enabled state: $e');
+      }
       return true;
     }
   }
@@ -190,7 +199,9 @@ class NotificationService {
           date: date,
         );
       } else {
-        debugPrint('NotificationService: skipping scheduling reminder for profile ${profile.id} day=$day date=$date (in past)');
+        if (kDebugMode) {
+          debugPrint('NotificationService: skipping scheduling reminder for profile ${profile.id} day=$day date=$date (in past)');
+        }
       }
     }
 
@@ -203,7 +214,9 @@ class NotificationService {
         date: birthday,
       );
     } else {
-      debugPrint('NotificationService: skipping birthday notification for profile ${profile.id} date=$birthday (in past)');
+      if (kDebugMode) {
+        debugPrint('NotificationService: skipping birthday notification for profile ${profile.id} date=$birthday (in past)');
+      }
     }
   }
 
@@ -237,7 +250,9 @@ class NotificationService {
     );
 
     try {
-      debugPrint('NotificationService: scheduling id=$id date=$date title="$title"');
+      if (kDebugMode) {
+        debugPrint('NotificationService: scheduling id=$id date=$date title="$title"');
+      }
       await _notifications.zonedSchedule(
         id,
         title,
@@ -246,9 +261,13 @@ class NotificationService {
         details,
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       );
-      debugPrint('NotificationService: scheduled id=$id date=$date');
+      if (kDebugMode) {
+        debugPrint('NotificationService: scheduled id=$id date=$date');
+      }
     } catch (e, st) {
-      debugPrint('NotificationService: failed to schedule id=$id date=$date error=$e\n$st');
+      if (kDebugMode) {
+        debugPrint('NotificationService: failed to schedule id=$id date=$date error=$e\n$st');
+      }
     }
   }
 

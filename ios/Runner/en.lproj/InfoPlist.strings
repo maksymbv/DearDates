@@ -1,0 +1,9 @@
+/* Photo Library Usage Description */
+"NSPhotoLibraryUsageDescription" = "The app needs access to your photo library so you can add photos to profiles.";
+
+/* Camera Usage Description */
+"NSCameraUsageDescription" = "The app needs access to your camera so you can take photos for profiles.";
+
+/* Photo Library Add Usage Description */
+"NSPhotoLibraryAddUsageDescription" = "The app needs access to save photos to your photo library.";
+

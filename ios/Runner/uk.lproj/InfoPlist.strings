@@ -1,0 +1,9 @@
+/* Photo Library Usage Description */
+"NSPhotoLibraryUsageDescription" = "Додатку потрібен доступ до вашої фотобібліотеки, щоб ви могли додати фото до профілю.";
+
+/* Camera Usage Description */
+"NSCameraUsageDescription" = "Додатку потрібен доступ до камери, щоб ви могли зробити фото для профілю.";
+
+/* Photo Library Add Usage Description */
+"NSPhotoLibraryAddUsageDescription" = "Додатку потрібен доступ для збереження фото у вашу фотобібліотеку.";
+

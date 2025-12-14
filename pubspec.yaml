@@ -30,6 +30,8 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
+  package_info_plus: ^8.0.2
+  device_info_plus: ^11.0.0
 
   # Local storage (built-in alternative to AsyncStorage)
   shared_preferences: ^2.3.2

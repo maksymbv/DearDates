@@ -44,14 +44,15 @@
 	<string>Приложению нужен доступ к камере, чтобы вы могли сделать фото для профиля.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Приложению нужен доступ для сохранения фото в вашу фотобиблиотеку.</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>ru</string>
+		<string>uk</string>
+	</array>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
-	<key>UIBackgroundModes</key>
-	<array>
-		<string>fetch</string>
-		<string>remote-notification</string>
-	</array>
 </dict>
 </plist>

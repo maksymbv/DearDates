@@ -161,7 +161,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     final profile = _profile!;
-    final age = getAge(profile.birthdate);
     final futureGifts = profile.gifts.where((g) => !g.isGiven).toList();
     final pastGifts = profile.gifts.where((g) => g.isGiven).toList();
     

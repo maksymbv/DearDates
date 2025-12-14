@@ -72,7 +72,9 @@ class StorageService {
       await notificationService.scheduleProfile(profile);
     } catch (e) {
       // Игнорируем ошибки уведомлений, чтобы не блокировать сохранение профиля
-      debugPrint('Ошибка при планировании уведомлений: $e');
+      if (kDebugMode) {
+        debugPrint('Ошибка при планировании уведомлений: $e');
+      }
     }
   }
 
@@ -102,7 +104,9 @@ class StorageService {
         await notificationService.scheduleProfile(profile);
       } catch (e) {
         // Игнорируем ошибки уведомлений, чтобы не блокировать сохранение профиля
-        debugPrint('Ошибка при обновлении уведомлений: $e');
+        if (kDebugMode) {
+          debugPrint('Ошибка при обновлении уведомлений: $e');
+        }
       }
     }
   }

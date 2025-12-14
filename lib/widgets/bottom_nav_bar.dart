@@ -224,8 +224,8 @@ class BottomNavBar extends StatelessWidget {
               const SizedBox(width: 32),
               // Центральная кнопка +
               Container(
-                width: 60,
-                height: 60,
+                width: 30,
+                height: 30,
                 decoration: BoxDecoration(
                   color: primaryColor,
                   shape: BoxShape.circle,

@@ -40,7 +40,9 @@ class PhotoService {
 
       return await _saveImage(image);
     } catch (e) {
-      debugPrint('Ошибка при выборе фото: $e');
+      if (kDebugMode) {
+        debugPrint('Ошибка при выборе фото: $e');
+      }
       return null;
     }
   }
@@ -59,7 +61,9 @@ class PhotoService {
 
       return await _saveImage(image);
     } catch (e) {
-      debugPrint('Ошибка при съемке фото: $e');
+      if (kDebugMode) {
+        debugPrint('Ошибка при съемке фото: $e');
+      }
       return null;
     }
   }
@@ -72,7 +76,9 @@ class PhotoService {
     final savedImage = File(path.join(photosDir.path, fileName));
 
     await image.saveTo(savedImage.path);
-    debugPrint('PhotoService: saved image to ${savedImage.path}');
+    if (kDebugMode) {
+      debugPrint('PhotoService: saved image to ${savedImage.path}');
+    }
     // Попытаться сгенерировать миниатюру (thumb)
     try {
       final thumbDir = Directory(path.join(photosDir.path, 'thumbs'));
@@ -92,10 +98,14 @@ class PhotoService {
         final thumbName = '${path.withoutExtension(fileName)}_thumb.png';
         final thumbFile = File(path.join(thumbDir.path, thumbName));
         await thumbFile.writeAsBytes(byteData.buffer.asUint8List());
-        debugPrint('PhotoService: saved thumbnail to ${thumbFile.path}');
+        if (kDebugMode) {
+          debugPrint('PhotoService: saved thumbnail to ${thumbFile.path}');
+        }
       }
     } catch (e) {
-      debugPrint('PhotoService: failed to create thumbnail: $e');
+      if (kDebugMode) {
+        debugPrint('PhotoService: failed to create thumbnail: $e');
+      }
     }
 
     return fileName; // возвращаем basename, чтобы хранить переносимый идентификатор файла
@@ -123,7 +133,9 @@ class PhotoService {
           final file = File(p);
           if (await file.exists()) {
             await file.delete();
-            debugPrint('PhotoService: deleted photo at $p');
+            if (kDebugMode) {
+              debugPrint('PhotoService: deleted photo at $p');
+            }
             return;
           }
         } catch (_) {
@@ -138,16 +150,21 @@ class PhotoService {
         final thumbFile = File(path.join(thumbDir.path, '${base}_thumb.png'));
         if (await thumbFile.exists()) {
           await thumbFile.delete();
-          debugPrint('PhotoService: deleted thumbnail at ${thumbFile.path}');
+          if (kDebugMode) {
+            debugPrint('PhotoService: deleted thumbnail at ${thumbFile.path}');
+          }
         }
       } catch (_) {}
     } catch (e) {
-      debugPrint('PhotoService: ошибка при удалении фото: $e');
+      if (kDebugMode) {
+        debugPrint('PhotoService: ошибка при удалении фото: $e');
+      }
     }
   }
 
-  /// Логирует путь к директории с фото и список файлов в ней.
+  /// Логирует путь к директории с фото и список файлов в ней (только в debug режиме).
   Future<void> logPhotosDirectoryContents() async {
+    if (!kDebugMode) return;
     try {
       final photosDir = await _getPhotosDirectory();
       debugPrint('PhotoService: photos directory: ${photosDir.path}');

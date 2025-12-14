@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../services/notification_service.dart';
 import '../../services/theme_service.dart';
@@ -26,11 +27,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   AppTheme _currentTheme = AppTheme.pink;
   bool _isDarkMode = false;
   bool _isLoading = true;
+  String _appVersion = 'Unknown';
+  String _deviceModel = 'Unknown';
+  String _osVersion = 'Unknown';
 
   @override
   void initState() {
     super.initState();
     _loadSettings();
+    _loadDeviceInfo();
   }
 
   Future<void> _loadSettings() async {
@@ -64,6 +69,65 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
     final daysList = _reminderDays.map((d) => '$d').join(', ');
     return '${localizations.daysBefore} $daysList ${localizations.days}';
+  }
+
+  Future<void> _loadDeviceInfo() async {
+    try {
+      final packageInfo = await PackageInfo.fromPlatform();
+      final deviceInfo = DeviceInfoPlugin();
+      String device = 'Unknown';
+      String os = 'Unknown';
+
+      switch (Theme.of(context).platform) {
+        case TargetPlatform.iOS:
+          final ios = await deviceInfo.iosInfo;
+          device = ios.utsname.machine ?? ios.model ?? 'iPhone';
+          os = 'iOS ${ios.systemVersion ?? ''}'.trim();
+          break;
+        case TargetPlatform.android:
+          final android = await deviceInfo.androidInfo;
+          device = android.model ?? 'Android';
+          os = 'Android ${android.version.release ?? ''}'.trim();
+          break;
+        default:
+          device = 'Device';
+          os = 'OS';
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _appVersion = packageInfo.version;
+        _deviceModel = device;
+        _osVersion = os;
+      });
+    } catch (_) {
+      // use defaults silently
+    }
+  }
+
+  Future<void> _openEmail({required bool isFeatureRequest}) async {
+    final subject = isFeatureRequest
+        ? 'Dear Dates — Feature Request'
+        : 'Dear Dates — Support Request';
+
+    final body = StringBuffer()
+      ..writeln('App version: $_appVersion')
+      ..writeln('Device: $_deviceModel')
+      ..writeln('OS: $_osVersion')
+      ..writeln('\nPlease describe your issue/request here:');
+
+    final uri = Uri(
+      scheme: 'mailto',
+      path: 'support@deardates.app',
+      queryParameters: {
+        'subject': subject,
+        'body': body.toString(),
+      },
+    );
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
   }
 
   @override
@@ -107,6 +171,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     child: Column(
                       children: [
+                        // General section
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'General',
+                            style: AppTextStyles.caption(context).copyWith(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: context.secondaryTextColor,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
                         // Блок уведомлений
                         AppCard(
                           padding: EdgeInsets.zero,
@@ -192,8 +269,75 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                           ),
                         ),
+                        const SizedBox(height: 24),
+                        // Other section
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Other',
+                            style: AppTextStyles.caption(context).copyWith(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: context.secondaryTextColor,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        // Report Bug
+                        AppCard(
+                          padding: EdgeInsets.zero,
+                          child: ListTile(
+                            leading: Icon(
+                              LucideIcons.bug,
+                              size: 24,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            title: Text(
+                              'Report Bug',
+                              style: AppTextStyles.body(context).copyWith(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            onTap: () => _openEmail(isFeatureRequest: false),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        // Feature Request
+                        AppCard(
+                          padding: EdgeInsets.zero,
+                          child: ListTile(
+                            leading: Icon(
+                              LucideIcons.sparkles,
+                              size: 24,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
+                            title: Text(
+                              'Feature Request',
+                              style: AppTextStyles.body(context).copyWith(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            onTap: () => _openEmail(isFeatureRequest: true),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        ),
                       ],
                     ),
+                  ),
+                ),
+                // Версия приложения
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    'App version: $_appVersion',
+                    style: AppTextStyles.caption(context).copyWith(fontSize: 12),
                   ),
                 ),
                 // Подпись внизу
