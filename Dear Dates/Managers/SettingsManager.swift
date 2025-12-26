@@ -12,7 +12,7 @@ import Combine
 class SettingsManager: ObservableObject {
     static let shared = SettingsManager()
     
-    @Published var isDarkMode: Bool {
+    @Published var themeType: ThemeType {
         didSet {
             saveSettings()
         }
@@ -34,23 +34,33 @@ class SettingsManager: ObservableObject {
         }
     }
     
+    // Для обратной совместимости
+    var isDarkMode: Bool {
+        get {
+            return themeType == .dark
+        }
+        set {
+            themeType = newValue ? .dark : .light
+        }
+    }
+    
     private let settingsKey = "AppSettings"
     
     private init() {
         if let data = UserDefaults.standard.data(forKey: settingsKey),
            let settings = try? JSONDecoder().decode(AppSettings.self, from: data) {
-            self.isDarkMode = settings.isDarkMode
+            self.themeType = settings.themeType
             self.accentColor = settings.accentColor
             self.notificationsEnabled = settings.notificationsEnabled
         } else {
-            self.isDarkMode = false
+            self.themeType = .system
             self.accentColor = .pink
             self.notificationsEnabled = true
         }
     }
     
     private func saveSettings() {
-        let settings = AppSettings(isDarkMode: isDarkMode, accentColor: accentColor, notificationsEnabled: notificationsEnabled)
+        let settings = AppSettings(themeType: themeType, accentColor: accentColor, notificationsEnabled: notificationsEnabled)
         if let encoded = try? JSONEncoder().encode(settings) {
             UserDefaults.standard.set(encoded, forKey: settingsKey)
         }

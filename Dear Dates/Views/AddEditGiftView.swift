@@ -11,12 +11,14 @@ struct AddEditGiftView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var dataManager: DataManager
+    @EnvironmentObject var localizationManager: LocalizationManager
     
     var gift: Gift?
     let profileId: UUID
     
     @State private var title: String = ""
     @State private var description: String = ""
+    @State private var showingDeleteAlert = false
     
     init(profileId: UUID, gift: Gift? = nil) {
         self.profileId = profileId
@@ -34,7 +36,7 @@ struct AddEditGiftView: View {
                     .ignoresSafeArea()
                 
                 Form {
-                    Section(header: Text("Информация о подарке")) {
+                    Section(header: Text("section.gifts_info".localized)) {
                         if isGiven {
                             Text(title)
                                 .foregroundColor(.secondary)
@@ -43,7 +45,7 @@ struct AddEditGiftView: View {
                                 .foregroundColor(.secondary)
                                 .frame(height: 100, alignment: .topLeading)
                         } else {
-                            TextField("Название подарка", text: $title)
+                            TextField("label.gift_title".localized, text: $title)
                             
                             TextEditor(text: $description)
                                 .frame(height: 100)
@@ -52,10 +54,10 @@ struct AddEditGiftView: View {
                     
                     if gift != nil {
                         Section {
-                            Button(role: .destructive, action: { deleteGift() }) {
+                            Button(role: .destructive, action: { showingDeleteAlert = true }) {
                                 HStack {
                                     Spacer()
-                                    Text("Удалить подарок")
+                                    Text("button.delete_gift".localized)
                                     Spacer()
                                 }
                             }
@@ -64,7 +66,7 @@ struct AddEditGiftView: View {
                 }
                 .scrollContentBackground(.hidden)
             }
-            .navigationTitle(gift == nil ? "Новый подарок" : (isGiven ? "Подарок" : "Редактировать подарок"))
+            .navigationTitle(gift == nil ? "navigation.new_gift".localized : (isGiven ? "navigation.gift".localized : "navigation.edit_gift".localized))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -87,6 +89,14 @@ struct AddEditGiftView: View {
                     title = gift.title
                     description = gift.description
                 }
+            }
+            .alert("message.delete_gift_confirm".localized, isPresented: $showingDeleteAlert) {
+                Button("button.cancel".localized, role: .cancel) { }
+                Button("button.delete".localized, role: .destructive) {
+                    deleteGift()
+                }
+            } message: {
+                Text("message.delete_gift_description".localized)
             }
         }
     }

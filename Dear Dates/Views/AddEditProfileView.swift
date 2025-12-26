@@ -12,6 +12,8 @@ struct AddEditProfileView: View {
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var dataManager: DataManager
     @EnvironmentObject var notificationManager: NotificationManager
+    @EnvironmentObject var settingsManager: SettingsManager
+    @EnvironmentObject var localizationManager: LocalizationManager
     
     var profile: Profile?
     
@@ -25,6 +27,8 @@ struct AddEditProfileView: View {
     @State private var photoPath: String?
     @State private var showingDeleteAlert = false
     @State private var showingDatePicker = false
+    @State private var selectedGroupId: UUID? = nil
+    @State private var showingGroupsView = false
     
     private let availableReminderDays = [1, 3, 7, 14, 30]
     
@@ -46,7 +50,7 @@ struct AddEditProfileView: View {
                     .ignoresSafeArea()
                 
                 Form {
-                    Section(header: Text("Фото")) {
+                    Section(header: Text("label.photo".localized)) {
                         HStack {
                             Spacer()
                             
@@ -61,11 +65,13 @@ struct AddEditProfileView: View {
                                     VStack {
                                         Image(systemName: "camera.fill")
                                             .font(.system(size: 40))
-                                        Text("Добавить фото")
+                                            .foregroundColor(settingsManager.accentColor.color)
+                                        Text("label.add_photo".localized)
                                             .font(.caption)
+                                            .foregroundColor(settingsManager.accentColor.color)
                                     }
                                     .frame(width: 100, height: 100)
-                                    .background(Color.gray.opacity(0.2))
+                                    .background(settingsManager.accentColor.color.opacity(0.1))
                                     .clipShape(Circle())
                                 }
                             }
@@ -75,30 +81,52 @@ struct AddEditProfileView: View {
                         .padding(.vertical)
                     }
                     
-                    Section(header: Text("Основная информация")) {
-                        TextField("Имя", text: $name)
+                    Section(header: Text("section.main_info".localized)) {
+                        TextField("label.name".localized, text: $name)
                         
                         Button(action: { showingDatePicker = true }) {
                             HStack {
-                                Text("Дата рождения")
+                                Text("label.birth_date".localized)
+                                    .foregroundColor(settingsManager.accentColor.color)
                                 Spacer()
                                 Text(formatDate(dateOfBirth))
-                                    .foregroundColor(.secondary)
+                                    .foregroundColor(.primary)
                             }
                         }
                     }
                     
-                    Section(header: Text("Заметки")) {
+                    Section(header: Text("label.notes".localized)) {
                         TextEditor(text: $notes)
                             .frame(height: 100)
                     }
                     
-                    Section(header: Text("Уведомления")) {
-                        Toggle("Включить уведомления", isOn: $notificationsEnabled)
+                    Section(header: Text("label.group".localized)) {
+                        Button(action: { showingGroupsView = true }) {
+                            HStack {
+                                Text("label.group".localized)
+                                    .foregroundColor(settingsManager.accentColor.color)
+                                Spacer()
+                                if let groupId = selectedGroupId,
+                                   let group = dataManager.getGroup(for: groupId) {
+                                    Text(group.name)
+                                        .foregroundColor(.primary)
+                                } else {
+                                    Text("label.no_group".localized)
+                                        .foregroundColor(.primary)
+                                }
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.primary)
+                                    .font(.caption)
+                            }
+                        }
+                    }
+                    
+                    Section(header: Text("navigation.notifications".localized)) {
+                        Toggle("label.enable_notifications".localized, isOn: $notificationsEnabled)
                         
                         if notificationsEnabled {
                             ForEach(availableReminderDays, id: \.self) { days in
-                                Toggle("За \(days) \(daysText(days))", isOn: Binding(
+                                Toggle("\(localizationManager.localizedString("label.reminder_days_before")) \(days) \(localizationManager.daysText(days))", isOn: Binding(
                                     get: { selectedReminderDays.contains(days) },
                                     set: { isOn in
                                         if isOn {
@@ -117,7 +145,7 @@ struct AddEditProfileView: View {
                             Button(role: .destructive, action: { showingDeleteAlert = true }) {
                                 HStack {
                                     Spacer()
-                                    Text("Удалить профиль")
+                                    Text("button.delete_profile".localized)
                                     Spacer()
                                 }
                             }
@@ -126,7 +154,7 @@ struct AddEditProfileView: View {
                 }
                 .scrollContentBackground(.hidden)
             }
-            .navigationTitle(profile == nil ? "Новый профиль" : "Редактировать профиль")
+            .navigationTitle(profile == nil ? "navigation.new_profile".localized : "navigation.edit_profile".localized)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -147,10 +175,10 @@ struct AddEditProfileView: View {
             }
             .sheet(isPresented: $showingDatePicker) {
                 NavigationView {
-                    DatePicker("Дата рождения", selection: $dateOfBirth, in: dateRange, displayedComponents: .date)
+                    DatePicker("navigation.birth_date".localized, selection: $dateOfBirth, in: dateRange, displayedComponents: .date)
                         .datePickerStyle(.wheel)
                         .labelsHidden()
-                        .navigationTitle("Дата рождения")
+                        .navigationTitle("navigation.birth_date".localized)
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar {
                             ToolbarItem(placement: .navigationBarTrailing) {
@@ -162,13 +190,20 @@ struct AddEditProfileView: View {
                 }
                 .presentationDetents([.medium])
             }
-            .alert("Удалить профиль?", isPresented: $showingDeleteAlert) {
-                Button("Отмена", role: .cancel) { }
-                Button("Удалить", role: .destructive) {
+            .sheet(isPresented: $showingGroupsView) {
+                NavigationView {
+                    GroupSelectorView { groupId in
+                        selectedGroupId = groupId
+                    }
+                }
+            }
+            .alert("message.delete_profile_confirm".localized, isPresented: $showingDeleteAlert) {
+                Button("button.cancel".localized, role: .cancel) { }
+                Button("button.delete".localized, role: .destructive) {
                     deleteProfile()
                 }
             } message: {
-                Text("Это действие нельзя отменить. Все данные профиля и подарки будут удалены.")
+                Text("message.delete_profile_description".localized)
             }
             .onAppear {
                 if let profile = profile {
@@ -178,6 +213,7 @@ struct AddEditProfileView: View {
                     notificationsEnabled = profile.notificationsEnabled
                     selectedReminderDays = Set(profile.reminderDays)
                     photoPath = profile.photoPath
+                    selectedGroupId = profile.groupId
                     
                     if let photoPath = profile.photoPath {
                         selectedImage = ImageManager.shared.loadImage(from: photoPath)
@@ -214,6 +250,7 @@ struct AddEditProfileView: View {
             updatedProfile.notificationsEnabled = notificationsEnabled
             updatedProfile.reminderDays = reminderDaysArray
             updatedProfile.photoPath = savedPhotoPath
+            updatedProfile.groupId = selectedGroupId
             
             dataManager.updateProfile(updatedProfile)
             notificationManager.updateNotifications(for: updatedProfile)
@@ -225,7 +262,8 @@ struct AddEditProfileView: View {
                 photoPath: savedPhotoPath,
                 notes: notes,
                 notificationsEnabled: notificationsEnabled,
-                reminderDays: reminderDaysArray
+                reminderDays: reminderDaysArray,
+                groupId: selectedGroupId
             )
             
             dataManager.addProfile(newProfile)
@@ -252,19 +290,8 @@ struct AddEditProfileView: View {
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .long
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = localizationManager.currentLanguage.locale
         return formatter.string(from: date)
-    }
-    
-    private func daysText(_ days: Int) -> String {
-        switch days {
-        case 1:
-            return "день"
-        case 3, 7, 14, 30:
-            return "дней"
-        default:
-            return "дней"
-        }
     }
 }
 

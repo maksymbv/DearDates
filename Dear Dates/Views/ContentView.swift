@@ -49,7 +49,7 @@ struct ContentView: View {
         .sheet(isPresented: $showingAddProfile) {
             AddEditProfileView()
         }
-        .preferredColorScheme(settingsManager.isDarkMode ? .dark : .light)
+        .preferredColorScheme(settingsManager.themeType.colorScheme)
         .accentColor(settingsManager.accentColor == .pink ? .pink : .blue)
         .onChange(of: selectedTab) { oldValue, newTab in
             if newTab == 2 {

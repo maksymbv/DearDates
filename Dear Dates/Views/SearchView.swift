@@ -9,6 +9,7 @@ import SwiftUI
 
 struct SearchView: View {
     @EnvironmentObject var dataManager: DataManager
+    @EnvironmentObject var localizationManager: LocalizationManager
     @Environment(\.colorScheme) var colorScheme
     @State private var searchText = ""
     
@@ -16,9 +17,10 @@ struct SearchView: View {
         if searchText.isEmpty {
             return []
         } else {
+            let searchLower = searchText.lowercased()
             return dataManager.profiles.filter { profile in
-                profile.name.localizedCaseInsensitiveContains(searchText) ||
-                profile.notes.localizedCaseInsensitiveContains(searchText)
+                profile.name.lowercased().contains(searchLower) ||
+                (!profile.notes.isEmpty && profile.notes.lowercased().contains(searchLower))
             }
         }
     }
@@ -29,19 +31,19 @@ struct SearchView: View {
                 (colorScheme == .light ? Color.appBackground : Color(.systemBackground))
                     .ignoresSafeArea()
                 
-                Group {
+                SwiftUI.Group {
                     if filteredProfiles.isEmpty {
                         VStack(spacing: 20) {
                             Image(systemName: "magnifyingglass")
                                 .font(.system(size: 60))
                                 .foregroundColor(.gray)
                             
-                            Text(searchText.isEmpty ? "Начните поиск" : "Ничего не найдено")
+                            Text(searchText.isEmpty ? "message.start_search".localized : "message.nothing_found".localized)
                                 .font(.title2)
                                 .fontWeight(.semibold)
                             
                             if !searchText.isEmpty {
-                                Text("Попробуйте другой запрос")
+                                Text("message.try_another_query".localized)
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
                             }
@@ -61,8 +63,8 @@ struct SearchView: View {
                     }
                 }
             }
-            .navigationTitle("Поиск")
-            .searchable(text: $searchText, prompt: "Поиск по имени или заметкам")
+            .navigationTitle("navigation.search".localized)
+            .searchable(text: $searchText, prompt: "message.search_prompt".localized)
         }
     }
 }

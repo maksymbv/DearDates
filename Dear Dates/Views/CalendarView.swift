@@ -17,6 +17,7 @@ struct BirthdayDate: Hashable {
 struct CalendarView: View {
     @EnvironmentObject var dataManager: DataManager
     @EnvironmentObject var settingsManager: SettingsManager
+    @EnvironmentObject var localizationManager: LocalizationManager
     @Environment(\.colorScheme) var colorScheme
     @State private var selectedDate: Date? = nil
     @State private var visibleDate = Date()
@@ -37,7 +38,7 @@ struct CalendarView: View {
     var selectedDayString: String {
         guard let date = selectedDate else { return "" }
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = localizationManager.currentLanguage.locale
         formatter.dateFormat = "d MMMM"
         return formatter.string(from: date)
     }
@@ -50,54 +51,61 @@ struct CalendarView: View {
                     iOSCalendarView(
                         visibleDate: $visibleDate,
                         selectedDate: $selectedDate,
-                        profiles: dataManager.profiles
+                        profiles: dataManager.profiles,
+                        locale: localizationManager.currentLanguage.locale
                     )
                     .frame(height: 400)
                     .padding(.vertical)
                     .padding(.top, 8)
                     
-                    // Профили выбранного дня
-                    if selectedDate != nil {
+                    // Профили выбранного дня (показываем только если есть дни рождения)
+                    if selectedDate != nil && !selectedDayProfiles.isEmpty {
                         VStack(alignment: .leading, spacing: 12) {
-                            if !selectedDayProfiles.isEmpty {
-                                Text(selectedDayString)
-                                    .font(.headline)
-                                    .padding(.horizontal)
-                                    .padding(.top, 24)
-                                
-                                LazyVStack(spacing: 12) {
-                                    ForEach(selectedDayProfiles) { profile in
-                                        NavigationLink(destination: ProfileDetailView(profile: profile)) {
-                                            ProfileRowView(profile: profile)
-                                        }
-                                        .buttonStyle(PlainButtonStyle())
-                                    }
-                                }
+                            Text(selectedDayString)
+                                .font(.headline)
                                 .padding(.horizontal)
-                            } else {
-                                VStack(spacing: 12) {
-                                    Text(selectedDayString)
-                                        .font(.headline)
-                                    
-                                    Text("Нет дней рождения в этот день")
-                                        .font(.subheadline)
-                                        .foregroundColor(.secondary)
+                                .padding(.top, 24)
+                            
+                            LazyVStack(spacing: 12) {
+                                ForEach(selectedDayProfiles) { profile in
+                                    NavigationLink(destination: ProfileDetailView(profile: profile)) {
+                                        ProfileRowView(profile: profile)
+                                            .transition(.opacity.combined(with: .move(edge: .top)))
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
                                 }
-                                .padding()
                             }
+                            .padding(.horizontal)
+                            .animation(.easeInOut(duration: 0.3), value: selectedDate)
                         }
                     }
                 }
             }
-            .navigationTitle("Календарь")
+            .navigationTitle("navigation.calendar".localized)
             .background(colorScheme == .light ? Color.appBackground : Color(.systemBackground))
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
                         visibleDate = Date()
-                        selectedDate = Date()
+                        // Проверяем, есть ли день рождения сегодня
+                        let calendar = Calendar.current
+                        let today = Date()
+                        let todayDay = calendar.component(.day, from: today)
+                        let todayMonth = calendar.component(.month, from: today)
+                        
+                        let hasBirthdayToday = dataManager.profiles.contains { profile in
+                            let profileDay = calendar.component(.day, from: profile.dateOfBirth)
+                            let profileMonth = calendar.component(.month, from: profile.dateOfBirth)
+                            return profileDay == todayDay && profileMonth == todayMonth
+                        }
+                        
+                        if hasBirthdayToday {
+                            selectedDate = today
+                        } else {
+                            selectedDate = nil
+                        }
                     }) {
-                        Text("Сегодня")
+                        Text("button.today".localized)
                             .foregroundColor(settingsManager.accentColor == .pink ? .pink : .blue)
                     }
                 }
@@ -111,12 +119,13 @@ struct iOSCalendarView: UIViewRepresentable {
     @Binding var visibleDate: Date
     @Binding var selectedDate: Date?
     let profiles: [Profile]
+    let locale: Locale
     
     func makeUIView(context: Context) -> UICalendarView {
         let calendarView = UICalendarView()
         let calendar = Calendar.current
         calendarView.calendar = calendar
-        calendarView.locale = Locale(identifier: "ru_RU")
+        calendarView.locale = locale
         calendarView.fontDesign = .rounded
         calendarView.delegate = context.coordinator
         calendarView.selectionBehavior = UICalendarSelectionSingleDate(delegate: context.coordinator)
@@ -134,14 +143,18 @@ struct iOSCalendarView: UIViewRepresentable {
     }
     
     func updateUIView(_ uiView: UICalendarView, context: Context) {
-        // Обновляем видимую дату
-        uiView.visibleDateComponents = Calendar.current.dateComponents([.year, .month], from: visibleDate)
+        uiView.locale = locale
+        let calendar = Calendar.current
+        let currentVisibleComponents = calendar.dateComponents([.year, .month], from: visibleDate)
+        
+        // Всегда задаем visibleDateComponents из visibleDate
+        uiView.visibleDateComponents = currentVisibleComponents
         
         // Обновляем выбранную дату в календаре
         if let selectedDate = selectedDate,
            let selectionBehavior = uiView.selectionBehavior as? UICalendarSelectionSingleDate {
             let components = Calendar.current.dateComponents([.year, .month, .day], from: selectedDate)
-            selectionBehavior.setSelected(components, animated: true)
+            selectionBehavior.setSelected(components, animated: false)
         }
         
         // Обновляем декораторы для дней рождения
@@ -185,16 +198,24 @@ struct iOSCalendarView: UIViewRepresentable {
         
         // MARK: - UICalendarSelectionSingleDateDelegate
         func dateSelection(_ selection: UICalendarSelectionSingleDate, didSelectDate dateComponents: DateComponents?) {
-            if let components = dateComponents,
-               let date = Calendar.current.date(from: components) {
-                parent.selectedDate = date
-            } else {
+            guard let components = dateComponents,
+                  let date = Calendar.current.date(from: components) else {
                 parent.selectedDate = nil
+                return
             }
+            
+            parent.selectedDate = date
         }
         
         func dateSelection(_ selection: UICalendarSelectionSingleDate, canSelectDate dateComponents: DateComponents?) -> Bool {
-            return true
+            guard let components = dateComponents,
+                  let month = components.month,
+                  let day = components.day else {
+                return false
+            }
+            
+            // Разрешаем выбор только дней с днями рождения
+            return birthdayDays.contains(BirthdayDate(month: month, day: day))
         }
     }
 }

@@ -10,6 +10,8 @@ import SwiftUI
 struct ProfileDetailView: View {
     @EnvironmentObject var dataManager: DataManager
     @EnvironmentObject var notificationManager: NotificationManager
+    @EnvironmentObject var settingsManager: SettingsManager
+    @EnvironmentObject var localizationManager: LocalizationManager
     @Environment(\.colorScheme) var colorScheme
     @State var profile: Profile
     @State private var showingEditProfile = false
@@ -46,22 +48,35 @@ struct ProfileDetailView: View {
                             .clipShape(Circle())
                     } else {
                         Circle()
-                            .fill(Color.gray.opacity(0.3))
+                            .fill(Color.pastelColor(hue: profile.avatarColorHue).opacity(colorScheme == .dark ? 0.6 : 0.7))
                             .frame(width: 120, height: 120)
                             .overlay(
                                 Text(profile.name.prefix(1).uppercased())
                                     .font(.system(size: 50))
                                     .fontWeight(.semibold)
+                                    .foregroundColor(.white)
                             )
                     }
                     
                     Text(profile.name)
                         .font(.title)
                         .fontWeight(.bold)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
                     
-                    Text("\(formatDateShort(profile.nextBirthday)) исполнится \(profile.age + 1)")
+                    Text("\(formatDateShort(profile.nextBirthday)) \("message.will_turn".localized) \(profile.age + 1)")
                         .font(.headline)
                         .foregroundColor(.secondary)
+                    
+                    if let group = dataManager.getGroup(for: profile.groupId) {
+                        Text(group.name)
+                            .font(.subheadline)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(settingsManager.accentColor.color.opacity(0.1))
+                            .foregroundColor(settingsManager.accentColor.color)
+                            .cornerRadius(12)
+                    }
                 }
                 .padding()
                 
@@ -71,7 +86,7 @@ struct ProfileDetailView: View {
                         .font(.body)
                         .padding()
                         .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color.gray.opacity(0.1))
+                        .background(colorScheme == .dark ? Color(.systemGray6) : Color.gray.opacity(0.1))
                         .cornerRadius(8)
                         .padding(.horizontal)
                 }
@@ -79,7 +94,7 @@ struct ProfileDetailView: View {
                 // Идеи подарков
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
-                        Text("Идеи подарков")
+                        Text("label.gift_ideas".localized)
                             .font(.headline)
                             .padding(.horizontal)
                         
@@ -93,7 +108,7 @@ struct ProfileDetailView: View {
                     }
                     
                     if giftIdeas.isEmpty {
-                        Text("Нет идей подарков")
+                            Text("message.no_gift_ideas".localized)
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                             .padding(.horizontal)
@@ -109,13 +124,13 @@ struct ProfileDetailView: View {
                 // История подарков
                 if !groupedGifts.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("История подарков")
+                        Text("label.gift_history".localized)
                             .font(.headline)
                             .padding(.horizontal)
                         
                         ForEach(groupedGifts.keys.sorted(by: >), id: \.self) { year in
                             VStack(alignment: .leading, spacing: 8) {
-                                Text("\(String(year)) год")
+                                Text("\(String(year)) \("label.year".localized)")
                                     .font(.subheadline)
                                     .fontWeight(.semibold)
                                     .foregroundColor(.secondary)
@@ -145,6 +160,14 @@ struct ProfileDetailView: View {
         .sheet(isPresented: $showingEditProfile) {
             AddEditProfileView(profile: profile)
         }
+        .onChange(of: showingEditProfile) { _, newValue in
+            if !newValue {
+                // Обновляем профиль после закрытия редактирования
+                if let updatedProfile = dataManager.profiles.first(where: { $0.id == profile.id }) {
+                    profile = updatedProfile
+                }
+            }
+        }
         .sheet(isPresented: $showingAddGift) {
             AddEditGiftView(profileId: profile.id)
         }
@@ -162,20 +185,21 @@ struct ProfileDetailView: View {
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .long
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = localizationManager.currentLanguage.locale
         return formatter.string(from: date)
     }
     
     private func formatDateShort(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateFormat = "d MMMM"
-        formatter.locale = Locale(identifier: "ru_RU")
+        formatter.locale = localizationManager.currentLanguage.locale
         return formatter.string(from: date)
     }
 }
 
 struct GiftRowView: View {
     @EnvironmentObject var dataManager: DataManager
+    @Environment(\.colorScheme) var colorScheme
     let gift: Gift
     let isIdea: Bool
     var onEdit: (() -> Void)? = nil
@@ -206,9 +230,9 @@ struct GiftRowView: View {
             }
         }
         .padding()
-        .background(Color.white)
+        .background(colorScheme == .light ? Color.white : Color(.secondarySystemBackground))
         .cornerRadius(12)
-        .shadow(color: Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
+        .shadow(color: colorScheme == .dark ? Color.black.opacity(0.3) : Color.black.opacity(0.05), radius: 5, x: 0, y: 2)
         .padding(.horizontal)
         .contentShape(Rectangle())
         .onTapGesture {

@@ -14,9 +14,11 @@ class DataManager: ObservableObject {
     
     @Published var profiles: [Profile] = []
     @Published var gifts: [Gift] = []
+    @Published var groups: [Group] = []
     
     private let profilesKey = "SavedProfiles"
     private let giftsKey = "SavedGifts"
+    private let groupsKey = "SavedGroups"
     
     private init() {
         loadData()
@@ -88,6 +90,41 @@ class DataManager: ObservableObject {
         getGifts(for: profileId).filter { !$0.isGiven }
     }
     
+    // MARK: - Groups
+    
+    func addGroup(_ group: Group) {
+        groups.append(group)
+        saveData()
+    }
+    
+    func updateGroup(_ group: Group) {
+        if let index = groups.firstIndex(where: { $0.id == group.id }) {
+            var updatedGroup = group
+            updatedGroup.updatedAt = Date()
+            groups[index] = updatedGroup
+            saveData()
+        }
+    }
+    
+    func deleteGroup(_ group: Group) {
+        // Удаляем группу
+        groups.removeAll { $0.id == group.id }
+        
+        // Удаляем groupId у всех профилей, которые были в этой группе
+        for i in 0..<profiles.count {
+            if profiles[i].groupId == group.id {
+                profiles[i].groupId = nil
+            }
+        }
+        
+        saveData()
+    }
+    
+    func getGroup(for groupId: UUID?) -> Group? {
+        guard let groupId = groupId else { return nil }
+        return groups.first { $0.id == groupId }
+    }
+    
     // MARK: - Persistence
     
     private func saveData() {
@@ -99,6 +136,11 @@ class DataManager: ObservableObject {
         // Сохраняем подарки
         if let encoded = try? JSONEncoder().encode(gifts) {
             UserDefaults.standard.set(encoded, forKey: giftsKey)
+        }
+        
+        // Сохраняем группы
+        if let encoded = try? JSONEncoder().encode(groups) {
+            UserDefaults.standard.set(encoded, forKey: groupsKey)
         }
     }
     
@@ -113,6 +155,12 @@ class DataManager: ObservableObject {
         if let data = UserDefaults.standard.data(forKey: giftsKey),
            let decoded = try? JSONDecoder().decode([Gift].self, from: data) {
             gifts = decoded
+        }
+        
+        // Загружаем группы
+        if let data = UserDefaults.standard.data(forKey: groupsKey),
+           let decoded = try? JSONDecoder().decode([Group].self, from: data) {
+            groups = decoded
         }
     }
 }
