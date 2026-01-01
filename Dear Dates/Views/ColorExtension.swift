@@ -29,6 +29,7 @@ extension Color {
         
         return Color(hue: hue, saturation: saturation, brightness: brightness)
     }
+    
     static let appBackground = Color(hex: "FAF7F8")
     
     init(hex: String) {

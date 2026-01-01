@@ -16,9 +16,19 @@ struct AddEditGiftView: View {
     var gift: Gift?
     let profileId: UUID
     
-    @State private var title: String = ""
-    @State private var description: String = ""
+    @State private var fullText: String = ""
     @State private var showingDeleteAlert = false
+    
+    private var title: String {
+        let lines = fullText.components(separatedBy: .newlines)
+        return lines.first?.trimmingCharacters(in: .whitespaces) ?? ""
+    }
+    
+    private var description: String {
+        let lines = fullText.components(separatedBy: .newlines)
+        guard lines.count > 1 else { return "" }
+        return lines[1...].joined(separator: "\n").trimmingCharacters(in: .whitespaces)
+    }
     
     init(profileId: UUID, gift: Gift? = nil) {
         self.profileId = profileId
@@ -32,39 +42,49 @@ struct AddEditGiftView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                (colorScheme == .light ? Color.appBackground : Color(.systemBackground))
+                // Адаптивный фон
+                (colorScheme == .light ? Color.white : Color(.systemBackground))
                     .ignoresSafeArea()
                 
-                Form {
-                    Section(header: Text("section.gifts_info".localized)) {
-                        if isGiven {
-                            Text(title)
-                                .foregroundColor(.secondary)
-                            
-                            Text(description)
-                                .foregroundColor(.secondary)
-                                .frame(height: 100, alignment: .topLeading)
-                        } else {
-                            TextField("label.gift_title".localized, text: $title)
-                            
-                            TextEditor(text: $description)
-                                .frame(height: 100)
-                        }
-                    }
-                    
-                    if gift != nil {
-                        Section {
-                            Button(role: .destructive, action: { showingDeleteAlert = true }) {
-                                HStack {
-                                    Spacer()
-                                    Text("button.delete_gift".localized)
-                                    Spacer()
+                VStack(spacing: 0) {
+                    if isGiven {
+                        // Режим просмотра (для подаренных подарков)
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 16) {
+                                if !title.isEmpty {
+                                    Text(title)
+                                        .font(.headline)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.primary)
                                 }
+                                
+                                if !description.isEmpty {
+                                    Text(description)
+                                        .font(.body)
+                                        .foregroundColor(.secondary)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding()
+                        }
+                    } else {
+                        // Режим редактирования
+                        GeometryReader { geometry in
+                            ScrollView {
+                                AutoExpandingTextEditor(
+                                    text: $fullText,
+                                    maxLength: AppConstants.TextLimits.maxDescriptionLength,
+                                    placeholder: "\(localizationManager.localizedString("label.gift_title"))\n\(localizationManager.localizedString("label.gift_description"))",
+                                    fixedWidth: geometry.size.width - 32
+                                )
+                                .frame(minHeight: 100)
+                                .frame(width: geometry.size.width - 32)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical)
                             }
                         }
                     }
                 }
-                .scrollContentBackground(.hidden)
             }
             .navigationTitle(gift == nil ? "navigation.new_gift".localized : (isGiven ? "navigation.gift".localized : "navigation.edit_gift".localized))
             .navigationBarTitleDisplayMode(.inline)
@@ -75,19 +95,34 @@ struct AddEditGiftView: View {
                     }
                 }
                 
-                if !isGiven {
-                    ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItemGroup(placement: .navigationBarTrailing) {
+                    // Меню действий (для всех существующих подарков)
+                    if gift != nil {
+                        Menu {
+                            Button(role: .destructive, action: { showingDeleteAlert = true }) {
+                                Label("button.delete_gift".localized, systemImage: "trash")
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis.circle")
+                        }
+                    }
+                    
+                    if !isGiven {
                         Button(action: { saveGift() }) {
                             Image(systemName: "checkmark")
                         }
-                        .disabled(title.isEmpty)
+                        .disabled(fullText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                 }
             }
             .onAppear {
                 if let gift = gift {
-                    title = gift.title
-                    description = gift.description
+                    // Объединяем title и description в один текст
+                    if gift.description.isEmpty {
+                        fullText = gift.title
+                    } else {
+                        fullText = "\(gift.title)\n\(gift.description)"
+                    }
                 }
             }
             .alert("message.delete_gift_confirm".localized, isPresented: $showingDeleteAlert) {
@@ -102,16 +137,25 @@ struct AddEditGiftView: View {
     }
     
     private func saveGift() {
+        let lines = fullText.components(separatedBy: .newlines)
+        let giftTitle = lines.first?.trimmingCharacters(in: .whitespaces) ?? ""
+        let giftDescription: String
+        if lines.count > 1 {
+            giftDescription = lines[1...].joined(separator: "\n").trimmingCharacters(in: .whitespaces)
+        } else {
+            giftDescription = ""
+        }
+        
         if let existingGift = gift {
             var updatedGift = existingGift
-            updatedGift.title = title
-            updatedGift.description = description
+            updatedGift.title = giftTitle
+            updatedGift.description = giftDescription
             dataManager.updateGift(updatedGift)
         } else {
             let newGift = Gift(
                 profileId: profileId,
-                title: title,
-                description: description
+                title: giftTitle,
+                description: giftDescription
             )
             dataManager.addGift(newGift)
         }

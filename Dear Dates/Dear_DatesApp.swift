@@ -13,6 +13,7 @@ struct DearDatesApp: App {
     private let notificationManager = NotificationManager.shared
     private let settingsManager = SettingsManager.shared
     private let localizationManager = LocalizationManager.shared
+    private let imageManager = ImageManager.shared
     
     var body: some Scene {
         WindowGroup {
@@ -21,6 +22,7 @@ struct DearDatesApp: App {
                 .environmentObject(notificationManager)
                 .environmentObject(settingsManager)
                 .environmentObject(localizationManager)
+                .environmentObject(imageManager)
         }
     }
 }

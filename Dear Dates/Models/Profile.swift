@@ -15,8 +15,8 @@ struct Profile: Identifiable, Codable {
     var notes: String
     var notificationsEnabled: Bool
     var reminderDays: [Int] // [1, 3, 7, 14, 30]
-    var groupId: UUID? // ID группы, к которой принадлежит профиль
     var avatarColorHue: Double // Сохраненный цвет аватарки (hue компонент HSV)
+    var isFavorite: Bool
     var createdAt: Date
     var updatedAt: Date
     
@@ -27,8 +27,8 @@ struct Profile: Identifiable, Codable {
          notes: String = "", 
          notificationsEnabled: Bool = true,
          reminderDays: [Int] = [7, 1],
-         groupId: UUID? = nil,
          avatarColorHue: Double? = nil,
+         isFavorite: Bool = false,
          createdAt: Date = Date(),
          updatedAt: Date = Date()) {
         self.id = id
@@ -38,7 +38,7 @@ struct Profile: Identifiable, Codable {
         self.notes = notes
         self.notificationsEnabled = notificationsEnabled
         self.reminderDays = reminderDays
-        self.groupId = groupId
+        self.isFavorite = isFavorite
         // Генерируем цвет на основе UUID, если не указан
         if let hue = avatarColorHue {
             self.avatarColorHue = hue
@@ -51,10 +51,9 @@ struct Profile: Identifiable, Codable {
         self.updatedAt = updatedAt
     }
     
-    // Для обратной совместимости при декодировании старых профилей без avatarColorHue
     enum CodingKeys: String, CodingKey {
         case id, name, dateOfBirth, photoPath, notes, notificationsEnabled
-        case reminderDays, groupId, avatarColorHue, createdAt, updatedAt
+        case reminderDays, avatarColorHue, isFavorite, createdAt, updatedAt
     }
     
     init(from decoder: Decoder) throws {
@@ -66,7 +65,6 @@ struct Profile: Identifiable, Codable {
         notes = try container.decode(String.self, forKey: .notes)
         notificationsEnabled = try container.decode(Bool.self, forKey: .notificationsEnabled)
         reminderDays = try container.decode([Int].self, forKey: .reminderDays)
-        groupId = try container.decodeIfPresent(UUID.self, forKey: .groupId)
         
         // Если avatarColorHue отсутствует (старые профили), генерируем его из id
         if let hue = try? container.decode(Double.self, forKey: .avatarColorHue) {
@@ -74,6 +72,13 @@ struct Profile: Identifiable, Codable {
         } else {
             let hash = id.uuidString.hashValue
             avatarColorHue = Double(abs(hash) % 360) / 360.0
+        }
+        
+        // Если isFavorite отсутствует (старые профили), устанавливаем false
+        if let favorite = try? container.decode(Bool.self, forKey: .isFavorite) {
+            isFavorite = favorite
+        } else {
+            isFavorite = false
         }
         
         createdAt = try container.decode(Date.self, forKey: .createdAt)
@@ -89,8 +94,8 @@ struct Profile: Identifiable, Codable {
         try container.encode(notes, forKey: .notes)
         try container.encode(notificationsEnabled, forKey: .notificationsEnabled)
         try container.encode(reminderDays, forKey: .reminderDays)
-        try container.encodeIfPresent(groupId, forKey: .groupId)
         try container.encode(avatarColorHue, forKey: .avatarColorHue)
+        try container.encode(isFavorite, forKey: .isFavorite)
         try container.encode(createdAt, forKey: .createdAt)
         try container.encode(updatedAt, forKey: .updatedAt)
     }

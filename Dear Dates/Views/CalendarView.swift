@@ -37,10 +37,7 @@ struct CalendarView: View {
     
     var selectedDayString: String {
         guard let date = selectedDate else { return "" }
-        let formatter = DateFormatter()
-        formatter.locale = localizationManager.currentLanguage.locale
-        formatter.dateFormat = "d MMMM"
-        return formatter.string(from: date)
+        return DateFormatterHelper.formatBirthday(date, locale: localizationManager.currentLanguage.locale)
     }
     
     var body: some View {
@@ -61,28 +58,28 @@ struct CalendarView: View {
                     // Профили выбранного дня (показываем только если есть дни рождения)
                     if selectedDate != nil && !selectedDayProfiles.isEmpty {
                         VStack(alignment: .leading, spacing: 12) {
-                            Text(selectedDayString)
-                                .font(.headline)
-                                .padding(.horizontal)
-                                .padding(.top, 24)
-                            
-                            LazyVStack(spacing: 12) {
-                                ForEach(selectedDayProfiles) { profile in
-                                    NavigationLink(destination: ProfileDetailView(profile: profile)) {
-                                        ProfileRowView(profile: profile)
+                                Text(selectedDayString)
+                                    .font(.headline)
+                                    .padding(.horizontal)
+                                    .padding(.top, 24)
+                                
+                                LazyVStack(spacing: 12) {
+                                    ForEach(selectedDayProfiles) { profile in
+                                        NavigationLink(destination: ProfileDetailView(profileId: profile.id)) {
+                                            ProfileRowView(profile: profile)
                                             .transition(.opacity.combined(with: .move(edge: .top)))
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
                                     }
-                                    .buttonStyle(PlainButtonStyle())
                                 }
-                            }
-                            .padding(.horizontal)
-                            .animation(.easeInOut(duration: 0.3), value: selectedDate)
+                                .padding(.horizontal)
+                            .animation(.easeInOut(duration: AppConstants.UI.animationDuration), value: selectedDate)
                         }
                     }
                 }
             }
             .navigationTitle("navigation.calendar".localized)
-            .background(colorScheme == .light ? Color.appBackground : Color(.systemBackground))
+            .appBackground(colorScheme: colorScheme)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {

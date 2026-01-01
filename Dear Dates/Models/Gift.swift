@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct Gift: Identifiable, Codable {
+struct Gift: Identifiable, Codable, Equatable {
     var id: UUID
     var profileId: UUID
     var title: String

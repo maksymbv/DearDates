@@ -14,14 +14,46 @@ class DataManager: ObservableObject {
     
     @Published var profiles: [Profile] = []
     @Published var gifts: [Gift] = []
-    @Published var groups: [Group] = []
-    
+    @Published var userProfile: UserProfile = UserProfile()
     private let profilesKey = "SavedProfiles"
     private let giftsKey = "SavedGifts"
-    private let groupsKey = "SavedGroups"
+    private let userProfileKey = "UserProfile"
     
     private init() {
         loadData()
+    }
+    
+    // MARK: - User Profile
+    
+    func updateUserProfile(_ profile: UserProfile) {
+        var updatedProfile = profile
+        updatedProfile.updatedAt = Date()
+        userProfile = updatedProfile
+        saveUserProfile()
+    }
+    
+    func getUserProfile() -> UserProfile {
+        return userProfile
+    }
+    
+    private func saveUserProfile() {
+        do {
+            let encoded = try JSONEncoder().encode(userProfile)
+            UserDefaults.standard.set(encoded, forKey: userProfileKey)
+        } catch {
+            AppLogger.log("Error saving user profile: \(error.localizedDescription)", level: .error, category: "DataManager")
+        }
+    }
+    
+    private func loadUserProfile() {
+        if let data = UserDefaults.standard.data(forKey: userProfileKey) {
+            do {
+                userProfile = try JSONDecoder().decode(UserProfile.self, from: data)
+            } catch {
+                AppLogger.log("Error loading user profile: \(error.localizedDescription)", level: .error, category: "DataManager")
+                userProfile = UserProfile()
+            }
+        }
     }
     
     // MARK: - Profiles
@@ -31,23 +63,23 @@ class DataManager: ObservableObject {
         saveData()
     }
     
-    func updateProfile(_ profile: Profile) {
+    func updateProfile(_ profile: Profile, notificationManager: NotificationManager) {
         if let index = profiles.firstIndex(where: { $0.id == profile.id }) {
             var updatedProfile = profile
             updatedProfile.updatedAt = Date()
             profiles[index] = updatedProfile
             // Обновляем уведомления
-            NotificationManager.shared.updateNotifications(for: updatedProfile)
+            notificationManager.updateNotifications(for: updatedProfile)
             saveData()
         }
     }
     
-    func deleteProfile(_ profile: Profile) {
+    func deleteProfile(_ profile: Profile, notificationManager: NotificationManager) {
         profiles.removeAll { $0.id == profile.id }
         // Удаляем все подарки этого профиля
         gifts.removeAll { $0.profileId == profile.id }
         // Удаляем уведомления профиля
-        NotificationManager.shared.cancelNotifications(for: profile)
+        notificationManager.cancelNotifications(for: profile)
         saveData()
     }
     
@@ -90,78 +122,59 @@ class DataManager: ObservableObject {
         getGifts(for: profileId).filter { !$0.isGiven }
     }
     
-    // MARK: - Groups
-    
-    func addGroup(_ group: Group) {
-        groups.append(group)
-        saveData()
-    }
-    
-    func updateGroup(_ group: Group) {
-        if let index = groups.firstIndex(where: { $0.id == group.id }) {
-            var updatedGroup = group
-            updatedGroup.updatedAt = Date()
-            groups[index] = updatedGroup
-            saveData()
-        }
-    }
-    
-    func deleteGroup(_ group: Group) {
-        // Удаляем группу
-        groups.removeAll { $0.id == group.id }
-        
-        // Удаляем groupId у всех профилей, которые были в этой группе
-        for i in 0..<profiles.count {
-            if profiles[i].groupId == group.id {
-                profiles[i].groupId = nil
-            }
-        }
-        
-        saveData()
-    }
-    
-    func getGroup(for groupId: UUID?) -> Group? {
-        guard let groupId = groupId else { return nil }
-        return groups.first { $0.id == groupId }
-    }
-    
     // MARK: - Persistence
     
     private func saveData() {
         // Сохраняем профили
-        if let encoded = try? JSONEncoder().encode(profiles) {
+        do {
+            let encoded = try JSONEncoder().encode(profiles)
             UserDefaults.standard.set(encoded, forKey: profilesKey)
+        } catch {
+            AppLogger.log("Error saving profiles: \(error.localizedDescription)", level: .error, category: "DataManager")
         }
         
         // Сохраняем подарки
-        if let encoded = try? JSONEncoder().encode(gifts) {
+        do {
+            let encoded = try JSONEncoder().encode(gifts)
             UserDefaults.standard.set(encoded, forKey: giftsKey)
-        }
-        
-        // Сохраняем группы
-        if let encoded = try? JSONEncoder().encode(groups) {
-            UserDefaults.standard.set(encoded, forKey: groupsKey)
+        } catch {
+            AppLogger.log("Error saving gifts: \(error.localizedDescription)", level: .error, category: "DataManager")
         }
     }
     
     private func loadData() {
         // Загружаем профили
-        if let data = UserDefaults.standard.data(forKey: profilesKey),
-           let decoded = try? JSONDecoder().decode([Profile].self, from: data) {
-            profiles = decoded
+        if let data = UserDefaults.standard.data(forKey: profilesKey) {
+            do {
+                profiles = try JSONDecoder().decode([Profile].self, from: data)
+            } catch {
+                AppLogger.log("Error loading profiles: \(error.localizedDescription)", level: .error, category: "DataManager")
+                profiles = []
+            }
         }
         
         // Загружаем подарки
-        if let data = UserDefaults.standard.data(forKey: giftsKey),
-           let decoded = try? JSONDecoder().decode([Gift].self, from: data) {
-            gifts = decoded
+        if let data = UserDefaults.standard.data(forKey: giftsKey) {
+            do {
+                gifts = try JSONDecoder().decode([Gift].self, from: data)
+            } catch {
+                AppLogger.log("Error loading gifts: \(error.localizedDescription)", level: .error, category: "DataManager")
+                gifts = []
+            }
         }
         
-        // Загружаем группы
-        if let data = UserDefaults.standard.data(forKey: groupsKey),
-           let decoded = try? JSONDecoder().decode([Group].self, from: data) {
-            groups = decoded
-        }
+        // Загружаем профиль пользователя
+        loadUserProfile()
+    }
+    
+    // MARK: - Statistics
+    
+    func getTotalProfilesCount() -> Int {
+        return profiles.count
+    }
+    
+    func getTotalGiftIdeasCount() -> Int {
+        return gifts.filter { !$0.isGiven }.count
     }
 }
 

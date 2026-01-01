@@ -20,7 +20,9 @@ class NotificationManager: ObservableObject {
     func requestAuthorization() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
             if let error = error {
-                print("Notification authorization error: \(error)")
+                AppLogger.log("Notification authorization error: \(error.localizedDescription)", level: .error, category: "NotificationManager")
+            } else if granted {
+                AppLogger.log("Notification authorization granted", level: .info, category: "NotificationManager")
             }
         }
     }
@@ -71,7 +73,7 @@ class NotificationManager: ObservableObject {
         
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error {
-                print("Error scheduling birthday notification: \(error)")
+                AppLogger.log("Error scheduling birthday notification: \(error.localizedDescription)", level: .error, category: "NotificationManager")
             }
         }
     }
@@ -91,7 +93,7 @@ class NotificationManager: ObservableObject {
         
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error {
-                print("Error scheduling reminder notification: \(error)")
+                AppLogger.log("Error scheduling reminder notification: \(error.localizedDescription)", level: .error, category: "NotificationManager")
             }
         }
     }

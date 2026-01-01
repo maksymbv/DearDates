@@ -8,8 +8,9 @@
 import Foundation
 import SwiftUI
 import UIKit
+import Combine
 
-class ImageManager {
+class ImageManager: ObservableObject {
     static let shared = ImageManager()
     
     private let documentsPath: URL
@@ -23,7 +24,7 @@ class ImageManager {
     }
     
     func saveImage(_ image: UIImage, for profileId: UUID) -> String? {
-        guard let imageData = image.jpegData(compressionQuality: 0.8) else {
+        guard let imageData = image.jpegData(compressionQuality: AppConstants.Images.compressionQuality) else {
             return nil
         }
         
@@ -34,7 +35,7 @@ class ImageManager {
             try imageData.write(to: filePath)
             return fileName
         } catch {
-            print("Error saving image: \(error)")
+            AppLogger.log("Error saving image: \(error.localizedDescription)", level: .error, category: "ImageManager")
             return nil
         }
     }

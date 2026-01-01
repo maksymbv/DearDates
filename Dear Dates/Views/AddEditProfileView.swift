@@ -14,11 +14,13 @@ struct AddEditProfileView: View {
     @EnvironmentObject var notificationManager: NotificationManager
     @EnvironmentObject var settingsManager: SettingsManager
     @EnvironmentObject var localizationManager: LocalizationManager
+    @EnvironmentObject var imageManager: ImageManager
     
     var profile: Profile?
     
     @State private var name: String = ""
-    @State private var dateOfBirth: Date = Date()
+    @State private var dateOfBirth: Date? = nil
+    @State private var dateWasSelected: Bool = false
     @State private var notes: String = ""
     @State private var notificationsEnabled: Bool = true
     @State private var selectedReminderDays: Set<Int> = [7, 1]
@@ -27,9 +29,6 @@ struct AddEditProfileView: View {
     @State private var photoPath: String?
     @State private var showingDeleteAlert = false
     @State private var showingDatePicker = false
-    @State private var selectedGroupId: UUID? = nil
-    @State private var showingGroupsView = false
-    
     private let availableReminderDays = [1, 3, 7, 14, 30]
     
     private var dateRange: ClosedRange<Date> {
@@ -46,7 +45,8 @@ struct AddEditProfileView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                (colorScheme == .light ? Color.appBackground : Color(.systemBackground))
+                Color.clear
+                    .appBackground(colorScheme: colorScheme)
                     .ignoresSafeArea()
                 
                 Form {
@@ -56,11 +56,7 @@ struct AddEditProfileView: View {
                             
                             Button(action: { showingImagePicker = true }) {
                                 if let image = selectedImage {
-                                    Image(uiImage: image)
-                                        .resizable()
-                                        .aspectRatio(contentMode: .fill)
-                                        .frame(width: 100, height: 100)
-                                        .clipShape(Circle())
+                                    AvatarView(image: image, name: name.isEmpty ? "A" : name, avatarColorHue: profile?.avatarColorHue ?? 0.5, size: 100)
                                 } else {
                                     VStack {
                                         Image(systemName: "camera.fill")
@@ -89,36 +85,23 @@ struct AddEditProfileView: View {
                                 Text("label.birth_date".localized)
                                     .foregroundColor(settingsManager.accentColor.color)
                                 Spacer()
-                                Text(formatDate(dateOfBirth))
-                                    .foregroundColor(.primary)
+                                if let date = dateOfBirth {
+                                    Text(formatDate(date))
+                                        .foregroundColor(.primary)
+                                } else {
+                                    Text("label.not_selected".localized)
+                                        .foregroundColor(.secondary)
+                                }
                             }
                         }
                     }
                     
                     Section(header: Text("label.notes".localized)) {
-                        TextEditor(text: $notes)
-                            .frame(height: 100)
-                    }
-                    
-                    Section(header: Text("label.group".localized)) {
-                        Button(action: { showingGroupsView = true }) {
-                            HStack {
-                                Text("label.group".localized)
-                                    .foregroundColor(settingsManager.accentColor.color)
-                                Spacer()
-                                if let groupId = selectedGroupId,
-                                   let group = dataManager.getGroup(for: groupId) {
-                                    Text(group.name)
-                                        .foregroundColor(.primary)
-                                } else {
-                                    Text("label.no_group".localized)
-                                        .foregroundColor(.primary)
-                                }
-                                Image(systemName: "chevron.right")
-                                    .foregroundColor(.primary)
-                                    .font(.caption)
-                            }
-                        }
+                        LimitedTextEditor(
+                            text: $notes,
+                            maxLength: AppConstants.TextLimits.maxNotesLength,
+                            height: AppConstants.UI.notesFieldHeight
+                        )
                     }
                     
                     Section(header: Text("navigation.notifications".localized)) {
@@ -167,7 +150,7 @@ struct AddEditProfileView: View {
                     Button(action: { saveProfile() }) {
                         Image(systemName: "checkmark")
                     }
-                    .disabled(name.isEmpty)
+                    .disabled(name.isEmpty || (profile == nil && !dateWasSelected))
                 }
             }
             .sheet(isPresented: $showingImagePicker) {
@@ -175,9 +158,19 @@ struct AddEditProfileView: View {
             }
             .sheet(isPresented: $showingDatePicker) {
                 NavigationView {
-                    DatePicker("navigation.birth_date".localized, selection: $dateOfBirth, in: dateRange, displayedComponents: .date)
+                    DatePicker("navigation.birth_date".localized, 
+                              selection: Binding(
+                                get: { dateOfBirth ?? Date() },
+                                set: { newDate in
+                                    dateOfBirth = newDate
+                                    dateWasSelected = true
+                                }
+                              ),
+                              in: dateRange, 
+                              displayedComponents: .date)
                         .datePickerStyle(.wheel)
                         .labelsHidden()
+                        .environment(\.locale, localizationManager.currentLanguage.locale)
                         .navigationTitle("navigation.birth_date".localized)
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar {
@@ -189,13 +182,6 @@ struct AddEditProfileView: View {
                         }
                 }
                 .presentationDetents([.medium])
-            }
-            .sheet(isPresented: $showingGroupsView) {
-                NavigationView {
-                    GroupSelectorView { groupId in
-                        selectedGroupId = groupId
-                    }
-                }
             }
             .alert("message.delete_profile_confirm".localized, isPresented: $showingDeleteAlert) {
                 Button("button.cancel".localized, role: .cancel) { }
@@ -209,14 +195,14 @@ struct AddEditProfileView: View {
                 if let profile = profile {
                     name = profile.name
                     dateOfBirth = profile.dateOfBirth
+                    dateWasSelected = true // Дата уже установлена для существующего профиля
                     notes = profile.notes
                     notificationsEnabled = profile.notificationsEnabled
                     selectedReminderDays = Set(profile.reminderDays)
                     photoPath = profile.photoPath
-                    selectedGroupId = profile.groupId
                     
                     if let photoPath = profile.photoPath {
-                        selectedImage = ImageManager.shared.loadImage(from: photoPath)
+                        selectedImage = imageManager.loadImage(from: photoPath)
                     }
                 }
             }
@@ -229,41 +215,44 @@ struct AddEditProfileView: View {
         // Сохраняем новое фото если оно было выбрано
         if let image = selectedImage {
             let profileId = profile?.id ?? UUID()
-            if let path = ImageManager.shared.saveImage(image, for: profileId) {
+            if let path = imageManager.saveImage(image, for: profileId) {
                 savedPhotoPath = path
                 
                 // Удаляем старое фото если оно было
                 if let oldPath = photoPath, oldPath != path {
-                    ImageManager.shared.deleteImage(at: oldPath)
+                    imageManager.deleteImage(at: oldPath)
                 }
             }
         }
         
         let reminderDaysArray = Array(selectedReminderDays).sorted()
         
+        guard let selectedDate = dateOfBirth else {
+            // Не должно произойти из-за disabled кнопки, но на всякий случай
+            return
+        }
+        
         if let existingProfile = profile {
             // Обновляем существующий профиль
             var updatedProfile = existingProfile
             updatedProfile.name = name
-            updatedProfile.dateOfBirth = dateOfBirth
+            updatedProfile.dateOfBirth = selectedDate
             updatedProfile.notes = notes
             updatedProfile.notificationsEnabled = notificationsEnabled
             updatedProfile.reminderDays = reminderDaysArray
             updatedProfile.photoPath = savedPhotoPath
-            updatedProfile.groupId = selectedGroupId
             
-            dataManager.updateProfile(updatedProfile)
+            dataManager.updateProfile(updatedProfile, notificationManager: notificationManager)
             notificationManager.updateNotifications(for: updatedProfile)
         } else {
             // Создаем новый профиль
             let newProfile = Profile(
                 name: name,
-                dateOfBirth: dateOfBirth,
+                dateOfBirth: selectedDate,
                 photoPath: savedPhotoPath,
                 notes: notes,
                 notificationsEnabled: notificationsEnabled,
-                reminderDays: reminderDaysArray,
-                groupId: selectedGroupId
+                reminderDays: reminderDaysArray
             )
             
             dataManager.addProfile(newProfile)
@@ -278,20 +267,17 @@ struct AddEditProfileView: View {
         
         // Удаляем фото если оно есть
         if let photoPath = profile.photoPath {
-            ImageManager.shared.deleteImage(at: photoPath)
+            imageManager.deleteImage(at: photoPath)
         }
         
         // Удаляем профиль (это также удалит все подарки и уведомления)
-        dataManager.deleteProfile(profile)
+        dataManager.deleteProfile(profile, notificationManager: notificationManager)
         
         dismiss()
     }
     
     private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .long
-        formatter.locale = localizationManager.currentLanguage.locale
-        return formatter.string(from: date)
+        DateFormatterHelper.formatLongDate(date, locale: localizationManager.currentLanguage.locale)
     }
 }
 
@@ -331,4 +317,5 @@ struct ImagePicker: UIViewControllerRepresentable {
         }
     }
 }
+
 

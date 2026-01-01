@@ -12,31 +12,100 @@ import UIKit
 struct SettingsView: View {
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var localizationManager: LocalizationManager
+    @EnvironmentObject var dataManager: DataManager
+    @EnvironmentObject var settingsManager: SettingsManager
+    @EnvironmentObject var imageManager: ImageManager
     @State private var showingSupportEmail = false
     @State private var showingFeatureRequest = false
+    @State private var showingUserProfile = false
     
     var body: some View {
         NavigationView {
             ZStack {
-                (colorScheme == .light ? Color.appBackground : Color(.systemBackground))
+                Color.clear
+                    .appBackground(colorScheme: colorScheme)
                     .ignoresSafeArea()
                 
                 List {
-                    Section(header: Text("settings.main".localized)) {
-                        NavigationLink(destination: ThemeSettingsView()) {
-                            HStack {
-                                Image(systemName: "paintbrush.fill")
-                                    .foregroundColor(.blue)
-                                    .frame(width: 30)
-                                Text("section.appearance".localized)
+                    // Профиль пользователя вверху
+                    Section {
+                        Button(action: { showingUserProfile = true }) {
+                            HStack(spacing: 16) {
+                                // Аватарка
+                                let userProfile = dataManager.getUserProfile()
+                                let userImage = userProfile.photoPath.flatMap { imageManager.loadImage(from: $0) }
+                                
+                                if let image = userImage {
+                                    Image(uiImage: image)
+                                        .resizable()
+                                        .scaledToFill()
+                                        .frame(width: 60, height: 60)
+                                        .clipShape(Circle())
+                                } else {
+                                    Circle()
+                                        .fill(settingsManager.accentColor.color.opacity(0.2))
+                                        .frame(width: 60, height: 60)
+                                        .overlay(
+                                            Image(systemName: "person.fill")
+                                                .font(.system(size: 30))
+                                                .foregroundColor(settingsManager.accentColor.color)
+                                        )
+                                }
+                                
+                                VStack(alignment: .leading, spacing: 6) {
+                                    // Имя пользователя
+                                    Text(userProfile.name.isEmpty ? "navigation.user_profile".localized : userProfile.name)
+                                        .font(.headline)
+                                        .foregroundColor(.primary)
+                                    
+                                    // Статистика
+                                    HStack(spacing: 20) {
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "person.2.fill")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                            Text("\(dataManager.getTotalProfilesCount())")
+                                                .font(.subheadline)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        
+                                        HStack(spacing: 4) {
+                                            Image(systemName: "gift.fill")
+                                                .font(.caption)
+                                                .foregroundColor(.secondary)
+                                            Text("\(dataManager.getTotalGiftIdeasCount())")
+                                                .font(.subheadline)
+                                                .foregroundColor(.secondary)
+                                        }
+                                    }
+                                }
+                                
+                                Spacer()
+                                
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
                             }
+                            .padding(.vertical, 12)
                         }
-                        
-                        NavigationLink(destination: NotificationsSettingsView()) {
-                            HStack {
-                                Image(systemName: "bell.fill")
-                                    .foregroundColor(.orange)
-                                    .frame(width: 30)
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                    
+                    Section(header: Text("settings.main".localized)) {
+                    NavigationLink(destination: ThemeSettingsView()) {
+                        HStack {
+                            Image(systemName: "paintbrush.fill")
+                                .foregroundColor(.blue)
+                                .frame(width: 30)
+                                Text("section.appearance".localized)
+                        }
+                    }
+                    
+                    NavigationLink(destination: NotificationsSettingsView()) {
+                        HStack {
+                            Image(systemName: "bell.fill")
+                                .foregroundColor(.orange)
+                                .frame(width: 30)
                                 Text("navigation.notifications".localized)
                             }
                         }
@@ -88,13 +157,19 @@ struct SettingsView: View {
                 .scrollContentBackground(.hidden)
             }
             .navigationTitle("navigation.settings".localized)
+            .sheet(isPresented: $showingUserProfile) {
+                UserProfileView()
+            }
+            .onReceive(dataManager.$userProfile) { _ in
+                // Обновляем view при изменении профиля пользователя
+            }
             .sheet(isPresented: $showingSupportEmail) {
                 MailView(
                     subject: "settings.support_email_subject".localized,
                     messageBody: getEmailTemplate(),
                     toRecipients: ["max.qb@icloud.com"]
                 )
-            }
+        }
             .sheet(isPresented: $showingFeatureRequest) {
                 MailView(
                     subject: "settings.request_feature_subject".localized,
@@ -135,7 +210,8 @@ struct ThemeSettingsView: View {
     
     var body: some View {
         ZStack {
-            (colorScheme == .light ? Color.appBackground : Color(.systemBackground))
+            Color.clear
+                .appBackground(colorScheme: colorScheme)
                 .ignoresSafeArea()
             
             Form {
@@ -194,17 +270,17 @@ struct ThemeSettingsView: View {
                     .foregroundColor(.primary)
                     
                     Button(action: { settingsManager.accentColor = .blue }) {
-                        HStack {
-                            Circle()
+                            HStack {
+                                Circle()
                                 .fill(Color.blue)
-                                .frame(width: 20, height: 20)
+                                    .frame(width: 20, height: 20)
                             Text("label.color_blue".localized)
                             Spacer()
                             if settingsManager.accentColor == .blue {
                                 Image(systemName: "checkmark")
                                     .foregroundColor(.blue)
-                            }
                         }
+                    }
                     }
                     .foregroundColor(.primary)
                 }
@@ -223,7 +299,8 @@ struct NotificationsSettingsView: View {
     
     var body: some View {
         ZStack {
-            (colorScheme == .light ? Color.appBackground : Color(.systemBackground))
+            Color.clear
+                .appBackground(colorScheme: colorScheme)
                 .ignoresSafeArea()
             
             Form {
