@@ -2,44 +2,44 @@
 //  AddEditProfileView.swift
 //  DearDates
 //
-//  Created on 2025
+//  Created on 2026
 //
 
 import SwiftUI
+import SwiftData
+import Photos
 
 struct AddEditProfileView: View {
+    @Query private var allProfiles: [Profile]
+    
+    @StateObject private var viewModel: AddEditProfileViewModel
+    
     @Environment(\.dismiss) var dismiss
+    @Environment(\.modelContext) var modelContext
     @Environment(\.colorScheme) var colorScheme
-    @EnvironmentObject var dataManager: DataManager
-    @EnvironmentObject var notificationManager: NotificationManager
     @EnvironmentObject var settingsManager: SettingsManager
     @EnvironmentObject var localizationManager: LocalizationManager
-    @EnvironmentObject var imageManager: ImageManager
     
-    var profile: Profile?
-    
-    @State private var name: String = ""
-    @State private var dateOfBirth: Date? = nil
-    @State private var dateWasSelected: Bool = false
-    @State private var notes: String = ""
-    @State private var notificationsEnabled: Bool = true
-    @State private var selectedReminderDays: Set<Int> = [7, 1]
-    @State private var selectedImage: UIImage?
     @State private var showingImagePicker = false
-    @State private var photoPath: String?
     @State private var showingDeleteAlert = false
-    @State private var showingDatePicker = false
-    private let availableReminderDays = [1, 3, 7, 14, 30]
+    @State private var profilesForValidation: [Profile] = []
     
-    private var dateRange: ClosedRange<Date> {
-        let calendar = Calendar.current
-        let startDate = calendar.date(from: DateComponents(year: 1900, month: 1, day: 1)) ?? Date()
-        let endDate = Date()
-        return startDate...endDate
+    private var profile: Profile?
+    var onSave: ((UUID) -> Void)? = nil
+    
+    init(profile: Profile? = nil, onSave: ((UUID) -> Void)? = nil) {
+        self.profile = profile
+        self.onSave = onSave
+        let viewModel = AddEditProfileViewModel(
+            profile: profile,
+            allProfiles: []
+        )
+        _viewModel = StateObject(wrappedValue: viewModel)
     }
     
-    init(profile: Profile? = nil) {
-        self.profile = profile
+    // Computed property для безопасного доступа к allProfiles
+    private var currentProfiles: [Profile] {
+        !allProfiles.isEmpty ? allProfiles : profilesForValidation
     }
     
     var body: some View {
@@ -50,13 +50,84 @@ struct AddEditProfileView: View {
                     .ignoresSafeArea()
                 
                 Form {
+                    photoSection
+                    mainInfoSection
+                    notesSection
+                    notificationsSection
+                    deleteSection
+                }
+                .scrollContentBackground(.hidden)
+            }
+            .navigationTitle(viewModel.profile == nil ? "navigation.new_profile".localized : "navigation.edit_profile".localized)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "xmark")
+                    }
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    saveButton
+                }
+            }
+            .sheet(isPresented: $showingImagePicker) {
+                ImagePicker(image: $viewModel.selectedImage)
+            }
+            .alert("message.delete_profile_confirm".localized, isPresented: $showingDeleteAlert) {
+                Button("button.cancel".localized, role: .cancel) { }
+                Button("button.delete".localized, role: .destructive) {
+                    Task { @MainActor in
+                        viewModel.deleteProfile(context: modelContext)
+                        // Небольшая задержка для завершения операций удаления
+                        try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 секунды
+                        dismiss()
+                    }
+                }
+            } message: {
+                Text("message.delete_profile_description".localized)
+            }
+            .onAppear {
+                // Сохраняем профили в @State для использования в ViewModel
+                updateProfilesForValidation()
+            }
+        }
+    }
+    
+    // MARK: - Photo Section
+    
+    @ViewBuilder
+    private var photoSection: some View {
                     Section(header: Text("label.photo".localized)) {
                         HStack {
                             Spacer()
-                            
-                            Button(action: { showingImagePicker = true }) {
-                                if let image = selectedImage {
-                                    AvatarView(image: image, name: name.isEmpty ? "A" : name, avatarColorHue: profile?.avatarColorHue ?? 0.5, size: 100)
+                photoButton
+                Spacer()
+            }
+            .padding(.vertical)
+        }
+    }
+    
+    private var photoButton: some View {
+        Button(action: {
+            viewModel.checkPhotoLibraryPermission { granted in
+                if granted {
+                    showingImagePicker = true
+                }
+            }
+        }) {
+            photoContent
+        }
+        .accessibilityLabel("accessibility.add_photo_button".localized)
+        .accessibilityHint("accessibility.add_photo_button_hint".localized)
+    }
+    
+    @ViewBuilder
+    private var photoContent: some View {
+        if let image = viewModel.selectedImage {
+            let displayName = viewModel.name.isEmpty ? "A" : viewModel.name
+            let hue = viewModel.profile?.avatarColorHue ?? 0.5
+            AvatarView(image: image, name: displayName, avatarColorHue: hue, size: 100)
                                 } else {
                                     VStack {
                                         Image(systemName: "camera.fill")
@@ -72,58 +143,64 @@ struct AddEditProfileView: View {
                                 }
                             }
                             
-                            Spacer()
-                        }
-                        .padding(.vertical)
-                    }
+    // MARK: - Main Info Section
                     
-                    Section(header: Text("section.main_info".localized)) {
-                        TextField("label.name".localized, text: $name)
-                        
-                        Button(action: { showingDatePicker = true }) {
-                            HStack {
-                                Text("label.birth_date".localized)
-                                    .foregroundColor(settingsManager.accentColor.color)
-                                Spacer()
-                                if let date = dateOfBirth {
-                                    Text(formatDate(date))
-                                        .foregroundColor(.primary)
-                                } else {
-                                    Text("label.not_selected".localized)
-                                        .foregroundColor(.secondary)
-                                }
-                            }
-                        }
-                    }
-                    
+    @ViewBuilder
+    private var mainInfoSection: some View {
+        Section(header: Text("section.main_info".localized)) {
+            TextField("", text: $viewModel.name)
+                .accessibilityLabel("accessibility.name_field".localized)
+                .accessibilityHint("accessibility.name_field_hint".localized)
+                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+        }
+    }
+    // MARK: - Notes Section
+    
+    @ViewBuilder
+    private var notesSection: some View {
                     Section(header: Text("label.notes".localized)) {
                         LimitedTextEditor(
-                            text: $notes,
+                text: $viewModel.notes,
                             maxLength: AppConstants.TextLimits.maxNotesLength,
                             height: AppConstants.UI.notesFieldHeight
                         )
                     }
+    }
+    
+    // MARK: - Notifications Section
                     
+    @ViewBuilder
+    private var notificationsSection: some View {
                     Section(header: Text("navigation.notifications".localized)) {
-                        Toggle("label.enable_notifications".localized, isOn: $notificationsEnabled)
+            Toggle("label.enable_notifications".localized, isOn: $viewModel.notificationsEnabled)
                         
-                        if notificationsEnabled {
-                            ForEach(availableReminderDays, id: \.self) { days in
-                                Toggle("\(localizationManager.localizedString("label.reminder_days_before")) \(days) \(localizationManager.daysText(days))", isOn: Binding(
-                                    get: { selectedReminderDays.contains(days) },
+            if viewModel.notificationsEnabled {
+                ForEach(viewModel.availableReminderDays, id: \.self) { days in
+                    reminderToggle(for: days)
+                }
+            }
+        }
+    }
+    
+    private func reminderToggle(for days: Int) -> some View {
+        let label = "\(localizationManager.localizedString("label.reminder_days_before")) \(days) \(localizationManager.daysText(days))"
+        return Toggle(label, isOn: Binding(
+            get: { viewModel.selectedReminderDays.contains(days) },
                                     set: { isOn in
                                         if isOn {
-                                            selectedReminderDays.insert(days)
+                    viewModel.selectedReminderDays.insert(days)
                                         } else {
-                                            selectedReminderDays.remove(days)
+                    viewModel.selectedReminderDays.remove(days)
                                         }
                                     }
                                 ))
                             }
-                        }
-                    }
+    
+    // MARK: - Delete Section
                     
-                    if profile != nil {
+    @ViewBuilder
+    private var deleteSection: some View {
+        if viewModel.profile != nil {
                         Section {
                             Button(role: .destructive, action: { showingDeleteAlert = true }) {
                                 HStack {
@@ -135,149 +212,35 @@ struct AddEditProfileView: View {
                         }
                     }
                 }
-                .scrollContentBackground(.hidden)
-            }
-            .navigationTitle(profile == nil ? "navigation.new_profile".localized : "navigation.edit_profile".localized)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: { dismiss() }) {
-                        Image(systemName: "xmark")
+    
+    // MARK: - Save Button
+    
+    private var saveButton: some View {
+        Button(action: {
+            if let profileId = viewModel.saveProfile(context: modelContext) {
+                // Если это новый профиль (не редактирование), вызываем callback
+                if viewModel.profile == nil, let onSave = onSave {
+                    dismiss()
+                    // Небольшая задержка для завершения сохранения
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                        onSave(profileId)
                     }
-                }
-                
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { saveProfile() }) {
-                        Image(systemName: "checkmark")
-                    }
-                    .disabled(name.isEmpty || (profile == nil && !dateWasSelected))
+                } else {
+                    dismiss()
                 }
             }
-            .sheet(isPresented: $showingImagePicker) {
-                ImagePicker(image: $selectedImage)
-            }
-            .sheet(isPresented: $showingDatePicker) {
-                NavigationView {
-                    DatePicker("navigation.birth_date".localized, 
-                              selection: Binding(
-                                get: { dateOfBirth ?? Date() },
-                                set: { newDate in
-                                    dateOfBirth = newDate
-                                    dateWasSelected = true
-                                }
-                              ),
-                              in: dateRange, 
-                              displayedComponents: .date)
-                        .datePickerStyle(.wheel)
-                        .labelsHidden()
-                        .environment(\.locale, localizationManager.currentLanguage.locale)
-                        .navigationTitle("navigation.birth_date".localized)
-                        .navigationBarTitleDisplayMode(.inline)
-                        .toolbar {
-                            ToolbarItem(placement: .navigationBarTrailing) {
-                                Button(action: { showingDatePicker = false }) {
-                                    Image(systemName: "checkmark")
-                                }
-                            }
-                        }
-                }
-                .presentationDetents([.medium])
-            }
-            .alert("message.delete_profile_confirm".localized, isPresented: $showingDeleteAlert) {
-                Button("button.cancel".localized, role: .cancel) { }
-                Button("button.delete".localized, role: .destructive) {
-                    deleteProfile()
-                }
-            } message: {
-                Text("message.delete_profile_description".localized)
-            }
-            .onAppear {
-                if let profile = profile {
-                    name = profile.name
-                    dateOfBirth = profile.dateOfBirth
-                    dateWasSelected = true // Дата уже установлена для существующего профиля
-                    notes = profile.notes
-                    notificationsEnabled = profile.notificationsEnabled
-                    selectedReminderDays = Set(profile.reminderDays)
-                    photoPath = profile.photoPath
-                    
-                    if let photoPath = profile.photoPath {
-                        selectedImage = imageManager.loadImage(from: photoPath)
-                    }
-                }
-            }
+        }) {
+            Image(systemName: "checkmark")
         }
+        .disabled(viewModel.name.isEmpty)
     }
     
-    private func saveProfile() {
-        var savedPhotoPath = photoPath
-        
-        // Сохраняем новое фото если оно было выбрано
-        if let image = selectedImage {
-            let profileId = profile?.id ?? UUID()
-            if let path = imageManager.saveImage(image, for: profileId) {
-                savedPhotoPath = path
-                
-                // Удаляем старое фото если оно было
-                if let oldPath = photoPath, oldPath != path {
-                    imageManager.deleteImage(at: oldPath)
-                }
-            }
-        }
-        
-        let reminderDaysArray = Array(selectedReminderDays).sorted()
-        
-        guard let selectedDate = dateOfBirth else {
-            // Не должно произойти из-за disabled кнопки, но на всякий случай
-            return
-        }
-        
-        if let existingProfile = profile {
-            // Обновляем существующий профиль
-            var updatedProfile = existingProfile
-            updatedProfile.name = name
-            updatedProfile.dateOfBirth = selectedDate
-            updatedProfile.notes = notes
-            updatedProfile.notificationsEnabled = notificationsEnabled
-            updatedProfile.reminderDays = reminderDaysArray
-            updatedProfile.photoPath = savedPhotoPath
-            
-            dataManager.updateProfile(updatedProfile, notificationManager: notificationManager)
-            notificationManager.updateNotifications(for: updatedProfile)
-        } else {
-            // Создаем новый профиль
-            let newProfile = Profile(
-                name: name,
-                dateOfBirth: selectedDate,
-                photoPath: savedPhotoPath,
-                notes: notes,
-                notificationsEnabled: notificationsEnabled,
-                reminderDays: reminderDaysArray
-            )
-            
-            dataManager.addProfile(newProfile)
-            notificationManager.scheduleNotifications(for: newProfile)
-        }
-        
-        dismiss()
-    }
+    // MARK: - Helper Methods
     
-    private func deleteProfile() {
-        guard let profile = profile else { return }
-        
-        // Удаляем фото если оно есть
-        if let photoPath = profile.photoPath {
-            imageManager.deleteImage(at: photoPath)
-        }
-        
-        // Удаляем профиль (это также удалит все подарки и уведомления)
-        dataManager.deleteProfile(profile, notificationManager: notificationManager)
-        
-        dismiss()
-    }
-    
-    private func formatDate(_ date: Date) -> String {
-        DateFormatterHelper.formatLongDate(date, locale: localizationManager.currentLanguage.locale)
+    private func updateProfilesForValidation() {
+        // Обновляем @State с текущими профилями из @Query
+        // Синхронизируем профили для валидации
+        profilesForValidation = allProfiles
     }
 }
 

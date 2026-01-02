@@ -2,7 +2,7 @@
 //  ColorExtension.swift
 //  DearDates
 //
-//  Created on 2025
+//  Created on 2026
 //
 
 import SwiftUI
@@ -20,12 +20,14 @@ extension Color {
     }
     
     /// Генерирует пастельный цвет на основе сохраненного hue компонента
+    /// Улучшена контрастность для accessibility
     static func pastelColor(hue: Double) -> Color {
         // Используем сохраненный hue для генерации стабильного пастельного цвета
         // Насыщенность и яркость вычисляются из hue для консистентности
+        // Улучшена контрастность: минимальная насыщенность 0.4, максимальная яркость 0.9
         let hash = Int(hue * 360)
-        let saturation = 0.3 + Double(abs(hash / 10) % 30) / 100.0 // Насыщенность 0.3-0.6
-        let brightness = 0.85 + Double(abs(hash / 100) % 15) / 100.0 // Яркость 0.85-1.0
+        let saturation = 0.4 + Double(abs(hash / 10) % 40) / 100.0 // Насыщенность 0.4-0.8 (улучшена для контрастности)
+        let brightness = 0.7 + Double(abs(hash / 100) % 20) / 100.0 // Яркость 0.7-0.9 (улучшена для контрастности)
         
         return Color(hue: hue, saturation: saturation, brightness: brightness)
     }

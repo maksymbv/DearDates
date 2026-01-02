@@ -2,7 +2,7 @@
 //  ContentView.swift
 //  DearDates
 //
-//  Created on 2025
+//  Created on 2026
 //
 
 import SwiftUI
@@ -16,7 +16,7 @@ struct ContentView: View {
         TabView(selection: $selectedTab) {
             ListView()
                 .tabItem {
-                    Label("", systemImage: "gift")
+                    Label("", systemImage: "person.2.fill")
                 }
                 .tag(0)
             

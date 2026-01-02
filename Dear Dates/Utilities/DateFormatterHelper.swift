@@ -2,18 +2,19 @@
 //  DateFormatterHelper.swift
 //  DearDates
 //
-//  Created on 2025
+//  Created on 2026
 //
 
 import Foundation
+import Combine
 
 struct DateFormatterHelper {
     private static var formatterCache: [String: DateFormatter] = [:]
     private static let cacheQueue = DispatchQueue(label: "com.deardates.dateformatter.cache", attributes: .concurrent)
     
     /// Форматирует дату как "d MMMM" (например, "4 декабря")
-    static func formatBirthday(_ date: Date, locale: Locale) -> String {
-        let cacheKey = "birthday_\(locale.identifier)"
+    static func formatEventDate(_ date: Date, locale: Locale) -> String {
+        let cacheKey = "event_\(locale.identifier)"
         
         return cacheQueue.sync {
             if let formatter = formatterCache[cacheKey] {

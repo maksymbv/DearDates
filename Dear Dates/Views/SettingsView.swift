@@ -2,22 +2,20 @@
 //  SettingsView.swift
 //  DearDates
 //
-//  Created on 2025
+//  Created on 2026
 //
 
 import SwiftUI
+import SwiftData
 import MessageUI
 import UIKit
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
+    @StateObject private var viewModel = SettingsViewModel()
+    
+    @Environment(\.modelContext) var modelContext
     @Environment(\.colorScheme) var colorScheme
-    @EnvironmentObject var localizationManager: LocalizationManager
-    @EnvironmentObject var dataManager: DataManager
-    @EnvironmentObject var settingsManager: SettingsManager
-    @EnvironmentObject var imageManager: ImageManager
-    @State private var showingSupportEmail = false
-    @State private var showingFeatureRequest = false
-    @State private var showingUserProfile = false
     
     var body: some View {
         NavigationView {
@@ -27,179 +25,57 @@ struct SettingsView: View {
                     .ignoresSafeArea()
                 
                 List {
-                    // Профиль пользователя вверху
-                    Section {
-                        Button(action: { showingUserProfile = true }) {
-                            HStack(spacing: 16) {
-                                // Аватарка
-                                let userProfile = dataManager.getUserProfile()
-                                let userImage = userProfile.photoPath.flatMap { imageManager.loadImage(from: $0) }
-                                
-                                if let image = userImage {
-                                    Image(uiImage: image)
-                                        .resizable()
-                                        .scaledToFill()
-                                        .frame(width: 60, height: 60)
-                                        .clipShape(Circle())
-                                } else {
-                                    Circle()
-                                        .fill(settingsManager.accentColor.color.opacity(0.2))
-                                        .frame(width: 60, height: 60)
-                                        .overlay(
-                                            Image(systemName: "person.fill")
-                                                .font(.system(size: 30))
-                                                .foregroundColor(settingsManager.accentColor.color)
-                                        )
-                                }
-                                
-                                VStack(alignment: .leading, spacing: 6) {
-                                    // Имя пользователя
-                                    Text(userProfile.name.isEmpty ? "navigation.user_profile".localized : userProfile.name)
-                                        .font(.headline)
-                                        .foregroundColor(.primary)
-                                    
-                                    // Статистика
-                                    HStack(spacing: 20) {
-                                        HStack(spacing: 4) {
-                                            Image(systemName: "person.2.fill")
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                            Text("\(dataManager.getTotalProfilesCount())")
-                                                .font(.subheadline)
-                                                .foregroundColor(.secondary)
-                                        }
-                                        
-                                        HStack(spacing: 4) {
-                                            Image(systemName: "gift.fill")
-                                                .font(.caption)
-                                                .foregroundColor(.secondary)
-                                            Text("\(dataManager.getTotalGiftIdeasCount())")
-                                                .font(.subheadline)
-                                                .foregroundColor(.secondary)
-                                        }
-                                    }
-                                }
-                                
-                                Spacer()
-                                
-                                Image(systemName: "chevron.right")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            .padding(.vertical, 12)
-                        }
-                        .buttonStyle(PlainButtonStyle())
+                    SettingsUserProfileSection {
+                        viewModel.showingUserProfile = true
                     }
                     
-                    Section(header: Text("settings.main".localized)) {
-                    NavigationLink(destination: ThemeSettingsView()) {
-                        HStack {
-                            Image(systemName: "paintbrush.fill")
-                                .foregroundColor(.blue)
-                                .frame(width: 30)
-                                Text("section.appearance".localized)
-                        }
-                    }
+                    SettingsMainSection()
                     
-                    NavigationLink(destination: NotificationsSettingsView()) {
-                        HStack {
-                            Image(systemName: "bell.fill")
-                                .foregroundColor(.orange)
-                                .frame(width: 30)
-                                Text("navigation.notifications".localized)
-                            }
-                        }
-                    }
+                    SettingsDataSection(
+                        onExport: { viewModel.exportData(context: modelContext) },
+                        onImport: { viewModel.importData() }
+                    )
                     
-                    Section(header: Text("settings.other".localized)) {
-                        Button(action: {
-                            if MFMailComposeViewController.canSendMail() {
-                                showingSupportEmail = true
-                            }
-                        }) {
-                            HStack {
-                                Image(systemName: "exclamationmark.triangle.fill")
-                                    .foregroundColor(.red)
-                                    .frame(width: 30)
-                                Text("settings.report_bug".localized)
-                                    .foregroundColor(.primary)
-                            }
-                        }
-                        
-                        Button(action: {
-                            if MFMailComposeViewController.canSendMail() {
-                                showingFeatureRequest = true
-                            }
-                        }) {
-                            HStack {
-                                Image(systemName: "lightbulb.fill")
-                                    .foregroundColor(.yellow)
-                                    .frame(width: 30)
-                                Text("settings.request_feature".localized)
-                                    .foregroundColor(.primary)
-                            }
-                        }
-                    }
+                    SettingsSupportSection(
+                        onReportBug: { viewModel.openSupportEmail() },
+                        onRequestFeature: { viewModel.openFeatureRequest() }
+                    )
                     
-                    Section(header: Text("settings.about".localized)) {
-                        HStack {
-                            Text("label.version".localized)
-                            Spacer()
-                            Text(getAppVersion())
-                                .foregroundColor(.secondary)
-                        }
-                        
-                        Text("message.app_description".localized)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
+                    SettingsAboutSection(appVersion: viewModel.getAppVersion())
                 }
                 .scrollContentBackground(.hidden)
             }
             .navigationTitle("navigation.settings".localized)
-            .sheet(isPresented: $showingUserProfile) {
+            .sheet(isPresented: $viewModel.showingUserProfile) {
                 UserProfileView()
             }
-            .onReceive(dataManager.$userProfile) { _ in
-                // Обновляем view при изменении профиля пользователя
-            }
-            .sheet(isPresented: $showingSupportEmail) {
+            .sheet(isPresented: $viewModel.showingSupportEmail) {
                 MailView(
                     subject: "settings.support_email_subject".localized,
-                    messageBody: getEmailTemplate(),
-                    toRecipients: ["max.qb@icloud.com"]
-                )
-        }
-            .sheet(isPresented: $showingFeatureRequest) {
-                MailView(
-                    subject: "settings.request_feature_subject".localized,
-                    messageBody: getEmailTemplate(),
+                    messageBody: viewModel.getEmailTemplate(),
                     toRecipients: ["max.qb@icloud.com"]
                 )
             }
+            .sheet(isPresented: $viewModel.showingFeatureRequest) {
+                MailView(
+                    subject: "settings.request_feature_subject".localized,
+                    messageBody: viewModel.getEmailTemplate(),
+                    toRecipients: ["max.qb@icloud.com"]
+                )
+            }
+            .sheet(isPresented: $viewModel.showingExportSheet) {
+                if let url = viewModel.exportFileURL {
+                    ActivityViewController(activityItems: [url])
+                }
+            }
+            .fileImporter(
+                isPresented: $viewModel.showingImportPicker,
+                allowedContentTypes: [.json],
+                allowsMultipleSelection: false
+            ) { result in
+                viewModel.handleImportResult(result, context: modelContext)
+            }
         }
-    }
-    
-    private func getAppVersion() -> String {
-        if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
-            return version
-        }
-        return "1.0.0"
-    }
-    
-    private func getEmailTemplate() -> String {
-        let appVersion = getAppVersion()
-        let iosVersion = UIDevice.current.systemVersion
-        let deviceModel = UIDevice.current.model
-        
-        return """
-        Application Name: Dear Dates
-        iOS: \(iosVersion)
-        Device Model: \(deviceModel)
-        App Version: \(appVersion)
-        --------------------------------------
-        
-        """
     }
 }
 
@@ -358,6 +234,22 @@ struct MailView: UIViewControllerRepresentable {
             dismiss()
         }
     }
+}
+
+// MARK: - Activity View Controller for Export
+struct ActivityViewController: UIViewControllerRepresentable {
+    let activityItems: [Any]
+    let applicationActivities: [UIActivity]? = nil
+    
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        let controller = UIActivityViewController(
+            activityItems: activityItems,
+            applicationActivities: applicationActivities
+        )
+        return controller
+    }
+    
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 

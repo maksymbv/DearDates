@@ -2,13 +2,17 @@
 //  SearchView.swift
 //  DearDates
 //
-//  Created on 2025
+//  Created on 2026
 //
 
 import SwiftUI
+import SwiftData
 
 struct SearchView: View {
-    @EnvironmentObject var dataManager: DataManager
+    @Query private var allProfiles: [Profile]
+    @Query private var allGifts: [Gift]
+    
+    @EnvironmentObject var settingsManager: SettingsManager
     @EnvironmentObject var localizationManager: LocalizationManager
     @Environment(\.colorScheme) var colorScheme
     @State private var searchText = ""
@@ -18,7 +22,7 @@ struct SearchView: View {
             return []
         } else {
             let searchLower = searchText.lowercased()
-            return dataManager.profiles.filter { profile in
+            return allProfiles.filter { profile in
                 profile.name.lowercased().contains(searchLower) ||
                 (!profile.notes.isEmpty && profile.notes.lowercased().contains(searchLower))
             }
@@ -32,10 +36,10 @@ struct SearchView: View {
             let searchLower = searchText.lowercased()
             var results: [(gift: Gift, profile: Profile)] = []
             
-            for gift in dataManager.gifts where !gift.isGiven {
+            for gift in allGifts where !gift.isGiven {
                 if gift.title.lowercased().contains(searchLower) ||
-                   (!gift.description.isEmpty && gift.description.lowercased().contains(searchLower)) {
-                    if let profile = dataManager.profiles.first(where: { $0.id == gift.profileId }) {
+                   (!gift.notes.isEmpty && gift.notes.lowercased().contains(searchLower)) {
+                    if let profile = allProfiles.first(where: { $0.id == gift.profileId }) {
                         results.append((gift: gift, profile: profile))
             }
         }
@@ -85,7 +89,11 @@ struct SearchView: View {
                                         
                                 ForEach(filteredProfiles) { profile in
                                     NavigationLink(destination: ProfileDetailView(profileId: profile.id)) {
-                                        ProfileRowView(profile: profile)
+                                        ProfileRowView(
+                                            profile: profile,
+                                            accentColor: settingsManager.accentColor.color,
+                                            locale: localizationManager.currentLanguage.locale
+                                        )
                                     }
                                     .buttonStyle(PlainButtonStyle())
                                             .padding(.horizontal)

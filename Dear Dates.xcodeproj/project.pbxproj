@@ -6,8 +6,19 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXContainerItemProxy section */
+		CE8D7AE62F07FE1D000742E2 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = CE6A34D92EFD6EC500744E37 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = CE6A34E02EFD6EC500744E37;
+			remoteInfo = "Dear Dates";
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		CE6A34E12EFD6EC500744E37 /* Dear Dates.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Dear Dates.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		CE8D7AE22F07FE1D000742E2 /* Dear Dates Tests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "Dear Dates Tests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -16,10 +27,22 @@
 			path = "Dear Dates";
 			sourceTree = "<group>";
 		};
+		CE8D7AE32F07FE1D000742E2 /* Dear Dates Tests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "Dear Dates Tests";
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		CE6A34DE2EFD6EC500744E37 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CE8D7ADF2F07FE1D000742E2 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -33,6 +56,7 @@
 			isa = PBXGroup;
 			children = (
 				CE6A34E32EFD6EC500744E37 /* Dear Dates */,
+				CE8D7AE32F07FE1D000742E2 /* Dear Dates Tests */,
 				CE6A34E22EFD6EC500744E37 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +65,7 @@
 			isa = PBXGroup;
 			children = (
 				CE6A34E12EFD6EC500744E37 /* Dear Dates.app */,
+				CE8D7AE22F07FE1D000742E2 /* Dear Dates Tests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -70,6 +95,29 @@
 			productReference = CE6A34E12EFD6EC500744E37 /* Dear Dates.app */;
 			productType = "com.apple.product-type.application";
 		};
+		CE8D7AE12F07FE1D000742E2 /* Dear Dates Tests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CE8D7AE82F07FE1D000742E2 /* Build configuration list for PBXNativeTarget "Dear Dates Tests" */;
+			buildPhases = (
+				CE8D7ADE2F07FE1D000742E2 /* Sources */,
+				CE8D7ADF2F07FE1D000742E2 /* Frameworks */,
+				CE8D7AE02F07FE1D000742E2 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				CE8D7AE72F07FE1D000742E2 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				CE8D7AE32F07FE1D000742E2 /* Dear Dates Tests */,
+			);
+			name = "Dear Dates Tests";
+			packageProductDependencies = (
+			);
+			productName = "Dear Dates Tests";
+			productReference = CE8D7AE22F07FE1D000742E2 /* Dear Dates Tests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -82,6 +130,10 @@
 				TargetAttributes = {
 					CE6A34E02EFD6EC500744E37 = {
 						CreatedOnToolsVersion = 26.2;
+					};
+					CE8D7AE12F07FE1D000742E2 = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = CE6A34E02EFD6EC500744E37;
 					};
 				};
 			};
@@ -100,12 +152,20 @@
 			projectRoot = "";
 			targets = (
 				CE6A34E02EFD6EC500744E37 /* Dear Dates */,
+				CE8D7AE12F07FE1D000742E2 /* Dear Dates Tests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		CE6A34DF2EFD6EC500744E37 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CE8D7AE02F07FE1D000742E2 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -122,7 +182,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CE8D7ADE2F07FE1D000742E2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		CE8D7AE72F07FE1D000742E2 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = CE6A34E02EFD6EC500744E37 /* Dear Dates */;
+			targetProxy = CE8D7AE62F07FE1D000742E2 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		CE6A34EA2EFD6EC600744E37 /* Debug */ = {
@@ -316,6 +391,58 @@
 			};
 			name = Release;
 		};
+		CE8D7AE92F07FE1D000742E2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 253G3YY5A6;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				MACOSX_DEPLOYMENT_TARGET = 15.7;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "max.baranov.Dear-Dates-Tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Dear Dates.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Dear Dates";
+				XROS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Debug;
+		};
+		CE8D7AEA2F07FE1D000742E2 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 253G3YY5A6;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				MACOSX_DEPLOYMENT_TARGET = 15.7;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "max.baranov.Dear-Dates-Tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx xros xrsimulator";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2,7";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Dear Dates.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Dear Dates";
+				XROS_DEPLOYMENT_TARGET = 26.2;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -333,6 +460,15 @@
 			buildConfigurations = (
 				CE6A34ED2EFD6EC600744E37 /* Debug */,
 				CE6A34EE2EFD6EC600744E37 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CE8D7AE82F07FE1D000742E2 /* Build configuration list for PBXNativeTarget "Dear Dates Tests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CE8D7AE92F07FE1D000742E2 /* Debug */,
+				CE8D7AEA2F07FE1D000742E2 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

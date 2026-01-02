@@ -2,7 +2,7 @@
 //  GiftIdeaSearchRow.swift
 //  DearDates
 //
-//  Created on 2025
+//  Created on 2026
 //
 
 import SwiftUI
@@ -19,8 +19,8 @@ struct GiftIdeaSearchRow: View {
                     .font(.headline)
                     .foregroundColor(.primary)
                 
-                if !gift.description.isEmpty {
-                    Text(gift.description)
+                if !gift.notes.isEmpty {
+                    Text(gift.notes)
                         .font(.caption)
                         .foregroundColor(.secondary)
                         .lineLimit(2)

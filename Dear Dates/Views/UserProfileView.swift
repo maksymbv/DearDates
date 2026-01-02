@@ -2,13 +2,20 @@
 //  UserProfileView.swift
 //  DearDates
 //
-//  Created on 2025
+//  Created on 2026
 //
 
 import SwiftUI
+import SwiftData
+import Photos
 
 struct UserProfileView: View {
+    @Query private var allProfiles: [Profile]
+    @Query private var allGifts: [Gift]
+    @Query private var userProfiles: [UserProfile]
+    
     @Environment(\.dismiss) var dismiss
+    @Environment(\.modelContext) var modelContext
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var dataManager: DataManager
     @EnvironmentObject var settingsManager: SettingsManager
@@ -21,11 +28,15 @@ struct UserProfileView: View {
     @State private var photoPath: String?
     
     private var totalProfilesCount: Int {
-        dataManager.getTotalProfilesCount()
+        allProfiles.count
     }
     
     private var totalGiftIdeasCount: Int {
-        dataManager.getTotalGiftIdeasCount()
+        allGifts.filter { !$0.isGiven }.count
+    }
+    
+    private var currentUserProfile: UserProfile? {
+        userProfiles.first
     }
     
     var body: some View {
@@ -40,7 +51,7 @@ struct UserProfileView: View {
                         HStack {
                             Spacer()
                             
-                            Button(action: { showingImagePicker = true }) {
+                            Button(action: { checkPhotoLibraryPermission() }) {
                                 if let image = selectedImage {
                                     Image(uiImage: image)
                                         .resizable()
@@ -72,7 +83,7 @@ struct UserProfileView: View {
                     }
                     
                     Section(header: Text("section.main_info".localized)) {
-                        TextField("label.name".localized, text: $name)
+                        TextField("", text: $name)
                     }
                     
                     Section(header: Text("label.statistics".localized)) {
@@ -130,19 +141,19 @@ struct UserProfileView: View {
     }
     
     private func loadProfile() {
-        let profile = dataManager.getUserProfile()
-        name = profile.name
-        photoPath = profile.photoPath
-        
-        if let photoPath = photoPath {
-            selectedImage = imageManager.loadImage(from: photoPath)
+        if let profile = currentUserProfile {
+            name = profile.name
+            photoPath = profile.photoPath
+            
+            if let photoPath = photoPath {
+                selectedImage = imageManager.loadImage(from: photoPath)
+            }
         }
     }
     
     private func saveProfile() {
         var newPhotoPath = photoPath
-        let currentProfile = dataManager.getUserProfile()
-        var photoId = currentProfile.photoId
+        var photoId = currentUserProfile?.photoId
         
         // Генерируем новый photoId если его нет
         if photoId == nil {
@@ -160,14 +171,50 @@ struct UserProfileView: View {
             }
         }
         
-        let userProfile = UserProfile(
-            name: name.trimmingCharacters(in: .whitespaces),
-            photoPath: newPhotoPath,
-            updatedAt: Date(),
-            photoId: photoId
-        )
+        let userProfile: UserProfile
+        if let existing = currentUserProfile {
+            existing.name = name.trimmingCharacters(in: .whitespaces)
+            existing.photoPath = newPhotoPath
+            existing.updatedAt = Date()
+            existing.photoId = photoId
+            userProfile = existing
+        } else {
+            userProfile = UserProfile(
+                name: name.trimmingCharacters(in: .whitespaces),
+                photoPath: newPhotoPath,
+                updatedAt: Date(),
+                photoId: photoId
+            )
+            modelContext.insert(userProfile)
+        }
         
-        dataManager.updateUserProfile(userProfile)
+        dataManager.updateUserProfile(userProfile, context: modelContext)
+    }
+    
+    private func checkPhotoLibraryPermission() {
+        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        
+        switch status {
+        case .authorized, .limited:
+            // Разрешение есть, можно открыть picker
+            showingImagePicker = true
+        case .denied, .restricted:
+            // Доступ запрещен, показываем ошибку
+            ErrorManager.shared.showError(.photoLibraryPermissionDenied)
+        case .notDetermined:
+            // Запрашиваем разрешение
+            PHPhotoLibrary.requestAuthorization(for: .readWrite) { newStatus in
+                DispatchQueue.main.async {
+                    if newStatus == .authorized || newStatus == .limited {
+                        self.showingImagePicker = true
+                    } else {
+                        ErrorManager.shared.showError(.photoLibraryPermissionDenied)
+                    }
+                }
+            }
+        @unknown default:
+            ErrorManager.shared.showError(.photoLibraryPermissionDenied)
+        }
     }
 }
 

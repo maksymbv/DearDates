@@ -2,22 +2,32 @@
 //  AddEditGiftView.swift
 //  DearDates
 //
-//  Created on 2025
+//  Created on 2026
 //
 
 import SwiftUI
+import SwiftData
 
 struct AddEditGiftView: View {
     @Environment(\.dismiss) var dismiss
+    @Environment(\.modelContext) var modelContext
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var dataManager: DataManager
     @EnvironmentObject var localizationManager: LocalizationManager
+    
+    @Query private var allEvents: [CustomEvent]
     
     var gift: Gift?
     let profileId: UUID
     
     @State private var fullText: String = ""
+    @State private var selectedEventId: UUID? = nil
     @State private var showingDeleteAlert = false
+    
+    private var profileEvents: [CustomEvent] {
+        allEvents.filter { $0.profileId == profileId }
+            .sorted { $0.nextDate < $1.nextDate }
+    }
     
     private var title: String {
         let lines = fullText.components(separatedBy: .newlines)
@@ -85,53 +95,60 @@ struct AddEditGiftView: View {
                         }
                     }
                 }
-            }
-            .navigationTitle(gift == nil ? "navigation.new_gift".localized : (isGiven ? "navigation.gift".localized : "navigation.edit_gift".localized))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: { dismiss() }) {
-                        Image(systemName: "xmark")
-                    }
-                }
-                
-                ToolbarItemGroup(placement: .navigationBarTrailing) {
-                    // Меню действий (для всех существующих подарков)
-                    if gift != nil {
-                        Menu {
-                            Button(role: .destructive, action: { showingDeleteAlert = true }) {
-                                Label("button.delete_gift".localized, systemImage: "trash")
-                            }
-                        } label: {
-                            Image(systemName: "ellipsis.circle")
+                .navigationTitle(gift == nil ? "navigation.new_gift".localized : (isGiven ? "navigation.gift".localized : "navigation.edit_gift".localized))
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        Button(action: { dismiss() }) {
+                            Image(systemName: "xmark")
                         }
                     }
                     
-                    if !isGiven {
-                        Button(action: { saveGift() }) {
-                            Image(systemName: "checkmark")
+                    ToolbarItemGroup(placement: .navigationBarTrailing) {
+                        // Меню действий (для всех существующих подарков)
+                        if gift != nil {
+                            Menu {
+                                Button(role: .destructive, action: { showingDeleteAlert = true }) {
+                                    Label("button.delete_gift".localized, systemImage: "trash")
+                                }
+                            } label: {
+                                Image(systemName: "ellipsis.circle")
+                            }
                         }
-                        .disabled(fullText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        
+                        if !isGiven {
+                            Button(action: { saveGift() }) {
+                                Image(systemName: "checkmark")
+                            }
+                            .disabled(fullText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        }
                     }
                 }
-            }
-            .onAppear {
-                if let gift = gift {
-                    // Объединяем title и description в один текст
-                    if gift.description.isEmpty {
-                        fullText = gift.title
-                    } else {
-                        fullText = "\(gift.title)\n\(gift.description)"
+                .safeAreaInset(edge: .bottom) {
+                    // Футер с выбором события
+                    if !isGiven && !profileEvents.isEmpty {
+                        eventSelectionFooter
                     }
                 }
-            }
-            .alert("message.delete_gift_confirm".localized, isPresented: $showingDeleteAlert) {
-                Button("button.cancel".localized, role: .cancel) { }
-                Button("button.delete".localized, role: .destructive) {
-                    deleteGift()
+                .onAppear {
+                    if let gift = gift {
+                        // Объединяем title и description в один текст
+                        if gift.notes.isEmpty {
+                            fullText = gift.title
+                        } else {
+                            fullText = "\(gift.title)\n\(gift.notes)"
+                        }
+                        selectedEventId = gift.eventId
+                    }
                 }
-            } message: {
-                Text("message.delete_gift_description".localized)
+                .alert("message.delete_gift_confirm".localized, isPresented: $showingDeleteAlert) {
+                    Button("button.cancel".localized, role: .cancel) { }
+                    Button("button.delete".localized, role: .destructive) {
+                        deleteGift()
+                    }
+                } message: {
+                    Text("message.delete_gift_description".localized)
+                }
             }
         }
     }
@@ -147,17 +164,18 @@ struct AddEditGiftView: View {
         }
         
         if let existingGift = gift {
-            var updatedGift = existingGift
-            updatedGift.title = giftTitle
-            updatedGift.description = giftDescription
-            dataManager.updateGift(updatedGift)
+            existingGift.title = giftTitle
+            existingGift.notes = giftDescription
+            existingGift.eventId = selectedEventId
+            dataManager.updateGift(existingGift, context: modelContext)
         } else {
             let newGift = Gift(
                 profileId: profileId,
                 title: giftTitle,
-                description: giftDescription
+                notes: giftDescription,
+                eventId: selectedEventId
             )
-            dataManager.addGift(newGift)
+            dataManager.addGift(newGift, context: modelContext)
         }
         
         dismiss()
@@ -165,8 +183,69 @@ struct AddEditGiftView: View {
     
     private func deleteGift() {
         guard let gift = gift else { return }
-        dataManager.deleteGift(gift)
+        dataManager.deleteGift(gift, context: modelContext)
         dismiss()
+    }
+    
+    // MARK: - Event Selection Footer
+    
+    private var eventSelectionFooter: some View {
+        VStack(spacing: 0) {
+            Divider()
+            
+            HStack {
+                Text("section.events".localized)
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                
+                Spacer()
+                
+                Menu {
+                    Button(action: {
+                        selectedEventId = nil
+                    }) {
+                        HStack {
+                            Text("label.not_selected".localized)
+                            if selectedEventId == nil {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                    
+                    ForEach(profileEvents, id: \.id) { event in
+                        Button(action: {
+                            selectedEventId = event.id
+                        }) {
+                            HStack {
+                                Text(event.name)
+                                if selectedEventId == event.id {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                } label: {
+                    HStack(spacing: 4) {
+                        if let selectedEventId = selectedEventId,
+                           let selectedEvent = profileEvents.first(where: { $0.id == selectedEventId }) {
+                            Text(selectedEvent.name)
+                                .font(.body)
+                                .foregroundColor(.primary)
+                        } else {
+                            Text("label.not_selected".localized)
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                        }
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(colorScheme == .light ? Color.white : Color(.secondarySystemBackground))
+        }
     }
 }
 

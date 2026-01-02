@@ -2,10 +2,11 @@
 //  LimitedTextEditor.swift
 //  DearDates
 //
-//  Created on 2025
+//  Created on 2026
 //
 
 import SwiftUI
+import Combine
 
 struct LimitedTextEditor: View {
     @Binding var text: String

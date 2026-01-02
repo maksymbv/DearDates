@@ -2,179 +2,274 @@
 //  DataManager.swift
 //  DearDates
 //
-//  Created on 2025
+//  Created on 2026
 //
 
 import Foundation
 import SwiftUI
 import Combine
+import SwiftData
 
 class DataManager: ObservableObject {
     static let shared = DataManager()
     
-    @Published var profiles: [Profile] = []
-    @Published var gifts: [Gift] = []
-    @Published var userProfile: UserProfile = UserProfile()
-    private let profilesKey = "SavedProfiles"
-    private let giftsKey = "SavedGifts"
-    private let userProfileKey = "UserProfile"
+    @Published var isLoading: Bool = true
+    
+    private var modelContext: ModelContext?
     
     private init() {
-        loadData()
+        setupSwiftData()
+    }
+    
+    // MARK: - SwiftData Setup
+    
+    func setupSwiftData() {
+        let schema = Schema([
+            Profile.self,
+            Gift.self,
+            UserProfile.self,
+            CustomEvent.self
+        ])
+        
+        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        
+        do {
+            let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
+            modelContext = ModelContext(container)
+            
+            // Данные теперь загружаются через @Query в Views
+            isLoading = false
+        } catch {
+            AppLogger.log("Error setting up SwiftData: \(error.localizedDescription)", level: .error, category: "DataManager")
+            ErrorManager.shared.showError(.dataLoadFailed(error.localizedDescription))
+            isLoading = false
+        }
     }
     
     // MARK: - User Profile
     
-    func updateUserProfile(_ profile: UserProfile) {
-        var updatedProfile = profile
-        updatedProfile.updatedAt = Date()
-        userProfile = updatedProfile
-        saveUserProfile()
-    }
-    
-    func getUserProfile() -> UserProfile {
-        return userProfile
-    }
-    
-    private func saveUserProfile() {
+    func updateUserProfile(_ profile: UserProfile, context: ModelContext) {
+        // ModelContext должен использоваться на главном потоке
+        profile.updatedAt = Date()
+        
+        // Если профиль еще не в контексте, добавляем его
+        // SwiftData автоматически обработает, если объект уже в контексте
+        context.insert(profile)
+        
         do {
-            let encoded = try JSONEncoder().encode(userProfile)
-            UserDefaults.standard.set(encoded, forKey: userProfileKey)
+            try context.save()
         } catch {
-            AppLogger.log("Error saving user profile: \(error.localizedDescription)", level: .error, category: "DataManager")
-        }
-    }
-    
-    private func loadUserProfile() {
-        if let data = UserDefaults.standard.data(forKey: userProfileKey) {
-            do {
-                userProfile = try JSONDecoder().decode(UserProfile.self, from: data)
-            } catch {
-                AppLogger.log("Error loading user profile: \(error.localizedDescription)", level: .error, category: "DataManager")
-                userProfile = UserProfile()
-            }
+            let errorMessage = error.localizedDescription
+            AppLogger.log("Error saving user profile: \(errorMessage)", level: .error, category: "DataManager")
+            ErrorManager.shared.showError(.dataSaveFailed(errorMessage))
         }
     }
     
     // MARK: - Profiles
     
-    func addProfile(_ profile: Profile) {
-        profiles.append(profile)
-        saveData()
-    }
-    
-    func updateProfile(_ profile: Profile, notificationManager: NotificationManager) {
-        if let index = profiles.firstIndex(where: { $0.id == profile.id }) {
-            var updatedProfile = profile
-            updatedProfile.updatedAt = Date()
-            profiles[index] = updatedProfile
-            // Обновляем уведомления
-            notificationManager.updateNotifications(for: updatedProfile)
-            saveData()
+    func addProfile(_ profile: Profile, context: ModelContext) {
+        context.insert(profile)
+        
+        do {
+            try context.save()
+        } catch {
+            let errorMessage = error.localizedDescription
+            AppLogger.log("Error saving profile: \(errorMessage)", level: .error, category: "DataManager")
+            ErrorManager.shared.showError(.dataSaveFailed(errorMessage))
         }
     }
     
-    func deleteProfile(_ profile: Profile, notificationManager: NotificationManager) {
-        profiles.removeAll { $0.id == profile.id }
-        // Удаляем все подарки этого профиля
-        gifts.removeAll { $0.profileId == profile.id }
-        // Удаляем уведомления профиля
-        notificationManager.cancelNotifications(for: profile)
-        saveData()
+    func updateProfile(_ profile: Profile, notificationManager: NotificationManager, context: ModelContext) {
+        // ModelContext должен использоваться на главном потоке
+        profile.updatedAt = Date()
+        
+        do {
+            try context.save()
+            notificationManager.updateNotifications(for: profile)
+        } catch {
+            let errorMessage = error.localizedDescription
+            AppLogger.log("Error updating profile: \(errorMessage)", level: .error, category: "DataManager")
+            ErrorManager.shared.showError(.dataSaveFailed(errorMessage))
+        }
     }
     
-    func getProfilesSortedByBirthday() -> [Profile] {
-        profiles.sorted { profile1, profile2 in
-            profile1.daysUntilBirthday < profile2.daysUntilBirthday
+    func deleteProfile(_ profile: Profile, notificationManager: NotificationManager, context: ModelContext) {
+        // Сохраняем данные профиля ДО удаления, чтобы избежать ошибок SwiftData
+        let profileId = profile.id
+        let reminderDays = profile.reminderDays
+        
+        // Отменяем уведомления ДО удаления профиля из контекста
+        notificationManager.cancelNotifications(profileId: profileId, reminderDays: reminderDays)
+        
+        // Удаляем профиль из контекста
+        context.delete(profile)
+        
+        do {
+            try context.save()
+        } catch {
+            let errorMessage = error.localizedDescription
+            AppLogger.log("Error deleting profile: \(errorMessage)", level: .error, category: "DataManager")
+            ErrorManager.shared.showError(.dataSaveFailed(errorMessage))
         }
     }
     
     // MARK: - Gifts
     
-    func addGift(_ gift: Gift) {
-        gifts.append(gift)
-        saveData()
-    }
-    
-    func updateGift(_ gift: Gift) {
-        if let index = gifts.firstIndex(where: { $0.id == gift.id }) {
-            var updatedGift = gift
-            updatedGift.updatedAt = Date()
-            gifts[index] = updatedGift
-            saveData()
-        }
-    }
-    
-    func deleteGift(_ gift: Gift) {
-        gifts.removeAll { $0.id == gift.id }
-        saveData()
-    }
-    
-    func getGifts(for profileId: UUID) -> [Gift] {
-        gifts.filter { $0.profileId == profileId }
-    }
-    
-    func getGivenGifts(for profileId: UUID) -> [Gift] {
-        getGifts(for: profileId).filter { $0.isGiven }
-    }
-    
-    func getGiftIdeas(for profileId: UUID) -> [Gift] {
-        getGifts(for: profileId).filter { !$0.isGiven }
-    }
-    
-    // MARK: - Persistence
-    
-    private func saveData() {
-        // Сохраняем профили
+    func addGift(_ gift: Gift, context: ModelContext) {
+        context.insert(gift)
+        
         do {
-            let encoded = try JSONEncoder().encode(profiles)
-            UserDefaults.standard.set(encoded, forKey: profilesKey)
+            try context.save()
         } catch {
-            AppLogger.log("Error saving profiles: \(error.localizedDescription)", level: .error, category: "DataManager")
-        }
-        
-        // Сохраняем подарки
-        do {
-            let encoded = try JSONEncoder().encode(gifts)
-            UserDefaults.standard.set(encoded, forKey: giftsKey)
-        } catch {
-            AppLogger.log("Error saving gifts: \(error.localizedDescription)", level: .error, category: "DataManager")
+            let errorMessage = error.localizedDescription
+            AppLogger.log("Error saving gift: \(errorMessage)", level: .error, category: "DataManager")
+            ErrorManager.shared.showError(.dataSaveFailed(errorMessage))
         }
     }
     
-    private func loadData() {
-        // Загружаем профили
-        if let data = UserDefaults.standard.data(forKey: profilesKey) {
-            do {
-                profiles = try JSONDecoder().decode([Profile].self, from: data)
-            } catch {
-                AppLogger.log("Error loading profiles: \(error.localizedDescription)", level: .error, category: "DataManager")
-                profiles = []
-            }
-        }
+    func updateGift(_ gift: Gift, context: ModelContext) {
+        // ModelContext должен использоваться на главном потоке
+        gift.updatedAt = Date()
         
-        // Загружаем подарки
-        if let data = UserDefaults.standard.data(forKey: giftsKey) {
-            do {
-                gifts = try JSONDecoder().decode([Gift].self, from: data)
-            } catch {
-                AppLogger.log("Error loading gifts: \(error.localizedDescription)", level: .error, category: "DataManager")
-                gifts = []
-            }
+        do {
+            try context.save()
+        } catch {
+            let errorMessage = error.localizedDescription
+            AppLogger.log("Error updating gift: \(errorMessage)", level: .error, category: "DataManager")
+            ErrorManager.shared.showError(.dataSaveFailed(errorMessage))
         }
-        
-        // Загружаем профиль пользователя
-        loadUserProfile()
     }
+    
+    func deleteGift(_ gift: Gift, context: ModelContext) {
+        // ModelContext должен использоваться на главном потоке
+        context.delete(gift)
+        
+        do {
+            try context.save()
+        } catch {
+            let errorMessage = error.localizedDescription
+            AppLogger.log("Error deleting gift: \(errorMessage)", level: .error, category: "DataManager")
+            ErrorManager.shared.showError(.dataSaveFailed(errorMessage))
+        }
+    }
+    
+    func getGifts(for profileId: UUID, context: ModelContext) -> [Gift] {
+        let descriptor = FetchDescriptor<Gift>(
+            predicate: #Predicate { $0.profileId == profileId }
+        )
+        return (try? context.fetch(descriptor)) ?? []
+    }
+    
+    func getGivenGifts(for profileId: UUID, context: ModelContext) -> [Gift] {
+        getGifts(for: profileId, context: context).filter { $0.isGiven }
+    }
+    
+    func getGiftIdeas(for profileId: UUID, context: ModelContext) -> [Gift] {
+        getGifts(for: profileId, context: context).filter { !$0.isGiven }
+    }
+    
+    // MARK: - Data Loading
+    
     
     // MARK: - Statistics
     
-    func getTotalProfilesCount() -> Int {
-        return profiles.count
+    func getTotalProfilesCount(context: ModelContext) -> Int {
+        let descriptor = FetchDescriptor<Profile>()
+        return (try? context.fetch(descriptor).count) ?? 0
     }
     
-    func getTotalGiftIdeasCount() -> Int {
-        return gifts.filter { !$0.isGiven }.count
+    func getTotalGiftIdeasCount(context: ModelContext) -> Int {
+        let descriptor = FetchDescriptor<Gift>(
+            predicate: #Predicate { !$0.isGiven }
+        )
+        return (try? context.fetch(descriptor).count) ?? 0
+    }
+    
+    // MARK: - Export/Import
+    
+    func exportData(context: ModelContext) -> Data? {
+        let profilesDescriptor = FetchDescriptor<Profile>()
+        let profiles = (try? context.fetch(profilesDescriptor)) ?? []
+        
+        let giftsDescriptor = FetchDescriptor<Gift>()
+        let gifts = (try? context.fetch(giftsDescriptor)) ?? []
+        
+        let userProfileDescriptor = FetchDescriptor<UserProfile>()
+        let userProfile = (try? context.fetch(userProfileDescriptor).first) ?? UserProfile()
+        
+        return DataExportImportManager.shared.exportData(
+            profiles: profiles,
+            gifts: gifts,
+            userProfile: userProfile
+        )
+    }
+    
+    func exportToFile(context: ModelContext) -> URL? {
+        let profilesDescriptor = FetchDescriptor<Profile>()
+        let profiles = (try? context.fetch(profilesDescriptor)) ?? []
+        
+        let giftsDescriptor = FetchDescriptor<Gift>()
+        let gifts = (try? context.fetch(giftsDescriptor)) ?? []
+        
+        let userProfileDescriptor = FetchDescriptor<UserProfile>()
+        let userProfile = (try? context.fetch(userProfileDescriptor).first) ?? UserProfile()
+        
+        return DataExportImportManager.shared.exportToFile(
+            profiles: profiles,
+            gifts: gifts,
+            userProfile: userProfile
+        )
+    }
+    
+    func importData(from data: Data) -> Bool {
+        guard let imported = DataExportImportManager.shared.importData(from: data) else {
+            return false
+        }
+        
+        guard let context = modelContext else { return false }
+        
+        // Импортируем данные напрямую в SwiftData
+        for profileCodable in imported.profiles {
+            let profile = Profile(from: profileCodable)
+            context.insert(profile)
+        }
+        
+        for giftCodable in imported.gifts {
+            let gift = Gift(from: giftCodable)
+            context.insert(gift)
+        }
+        
+        // Обновляем профиль пользователя
+        let userProfileDescriptor = FetchDescriptor<UserProfile>()
+        if let existing = try? context.fetch(userProfileDescriptor).first {
+            existing.name = imported.userProfile.name
+            existing.photoPath = imported.userProfile.photoPath
+            existing.updatedAt = Date()
+            existing.photoId = imported.userProfile.photoId
+        } else {
+            let userProfile = UserProfile(from: imported.userProfile)
+            context.insert(userProfile)
+        }
+        
+        do {
+            try context.save()
+            return true
+        } catch {
+            AppLogger.log("Error saving imported data: \(error.localizedDescription)", level: .error, category: "DataManager")
+            ErrorManager.shared.showError(.dataSaveFailed(error.localizedDescription))
+            return false
+        }
+    }
+    
+    func importFromFile(at url: URL) -> Bool {
+        guard DataExportImportManager.shared.importFromFile(at: url) != nil else {
+            return false
+        }
+        
+        guard let data = try? Data(contentsOf: url) else {
+            return false
+        }
+        
+        return importData(from: data)
     }
 }
-

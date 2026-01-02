@@ -2,83 +2,156 @@
 //  ProfileRowView.swift
 //  DearDates
 //
-//  Created on 2025
+//  Created on 2026
 //
 
 import SwiftUI
+import SwiftData
 
 struct ProfileRowView: View {
-    @EnvironmentObject var settingsManager: SettingsManager
-    @EnvironmentObject var localizationManager: LocalizationManager
+    @Query private var allEvents: [CustomEvent]
+    
     @EnvironmentObject var imageManager: ImageManager
+    @EnvironmentObject var localizationManager: LocalizationManager
     @Environment(\.colorScheme) var colorScheme
     
     let profile: Profile
+    let accentColor: Color
+    let locale: Locale
+    
+    init(profile: Profile, accentColor: Color, locale: Locale) {
+        self.profile = profile
+        self.accentColor = accentColor
+        self.locale = locale
+    }
+    
+    // Вычисляем следующее событие внутри компонента
+    private var nextEvent: (name: String, date: Date, daysUntil: Int)? {
+        // Добавляем только пользовательские события
+        let profileEvents = allEvents.filter { $0.profileId == profile.id }
+        
+        // Сортируем по дате и возвращаем ближайшее
+        return profileEvents
+            .map { event in
+                (name: event.name, date: event.nextDate, daysUntil: event.daysUntil)
+            }
+            .sorted { $0.date < $1.date }
+            .first
+    }
     
     private var avatarImage: UIImage? {
         guard let photoPath = profile.photoPath else { return nil }
         return imageManager.loadImage(from: photoPath)
     }
     
-    private var formattedBirthday: String {
-        DateFormatterHelper.formatBirthday(
-            profile.dateOfBirth,
-            locale: localizationManager.currentLanguage.locale
-        )
+    private var formattedEventDate: String? {
+        guard let event = nextEvent else {
+            return nil
+        }
+        return DateFormatterHelper.formatEventDate(event.date, locale: locale)
+    }
+    
+    private var eventName: String? {
+        nextEvent?.name
     }
     
     private var daysUntilText: String? {
-        guard profile.daysUntilBirthday <= 30 else { return nil }
-        return localizationManager.daysUntilBirthdayText(profile.daysUntilBirthday)
+        guard let event = nextEvent, event.daysUntil <= 30 else { return nil }
+        // Используем локализацию для дней до события
+        return localizationManager.daysUntilEventText(event.daysUntil)
     }
     
-    var body: some View {
-        HStack(spacing: 12) {
+    private var accessibilityLabelText: String {
+        var parts = ["accessibility.profile_row".localized + " \(profile.name)"]
+        if let eventName = eventName, let formattedDate = formattedEventDate {
+            parts.append("\(eventName) · \(formattedDate)")
+        } else if let formattedDate = formattedEventDate {
+            parts.append(formattedDate)
+        }
+        if let daysText = daysUntilText {
+            parts.append(daysText)
+        }
+        return parts.joined(separator: ", ")
+    }
+    
+    @ViewBuilder
+    private var avatarSection: some View {
             AvatarView(
                 image: avatarImage,
                 name: profile.name,
                 avatarColorHue: profile.avatarColorHue,
                 size: 60
             )
+    }
             
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(alignment: .center) {
-                    Text(profile.name)
-                        .font(.headline)
-                    
-                    Spacer()
-                    
-                    if let daysText = daysUntilText {
-                        Text(daysText)
-                            .font(.caption)
-                            .fontWeight(.medium)
-                            .foregroundColor(profile.daysUntilBirthday <= 3 ? settingsManager.accentColor.color : .secondary)
-                    }
-                }
-                
-                Text(formattedBirthday)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-        }
-        .padding()
-        .background(colorScheme == .light ? Color.white : Color(.secondarySystemBackground))
-        .cornerRadius(20)
-        .overlay(alignment: .topTrailing) {
+    @ViewBuilder
+    private var nameAndDaysSection: some View {
+        HStack(spacing: 8) {
+            Text(profile.name)
+                .font(.headline)
+                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+            
+            // Звездочка рядом с именем
             if profile.isFavorite {
                 Image(systemName: "star.fill")
                     .font(.caption)
-                    .foregroundColor(settingsManager.accentColor.color)
-                    .padding(.top, 14)
-                    .padding(.trailing, 14)
+                    .foregroundColor(accentColor)
+                    .accessibilityLabel("accessibility.favorite".localized)
             }
         }
-        .shadow(
-            color: colorScheme == .dark ? Color.black.opacity(0.3) : Color.black.opacity(0.05),
-            radius: 5,
-            x: 0,
-            y: 2
-        )
+    }
+    
+    @ViewBuilder
+    private var eventInfoSection: some View {
+        if let eventName = eventName, let formattedDate = formattedEventDate {
+            Text("\(eventName) · \(formattedDate)")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+        } else if let formattedDate = formattedEventDate {
+            Text(formattedDate)
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+        }
+    }
+    
+    @ViewBuilder
+    private var daysUntilSection: some View {
+        if let daysText = daysUntilText {
+            Text(daysText)
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundColor(accentColor)
+                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+        }
+    }
+    
+    @ViewBuilder
+    private var infoSection: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            nameAndDaysSection
+            eventInfoSection
+        }
+    }
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            avatarSection
+            
+            HStack(spacing: 0) {
+                infoSection
+                
+                Spacer(minLength: 0)
+                
+                // Дни до события посередине по высоте, максимально справа
+                daysUntilSection
+                    .frame(maxHeight: .infinity, alignment: .center)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityLabelText)
+        .accessibilityHint("accessibility.profile_row_hint".localized)
     }
 }
 
@@ -87,8 +160,6 @@ extension ProfileRowView: Equatable {
         lhs.profile.id == rhs.profile.id &&
         lhs.profile.name == rhs.profile.name &&
         lhs.profile.isFavorite == rhs.profile.isFavorite &&
-        lhs.profile.daysUntilBirthday == rhs.profile.daysUntilBirthday &&
-        lhs.profile.photoPath == rhs.profile.photoPath &&
-        lhs.profile.dateOfBirth == rhs.profile.dateOfBirth
+        lhs.profile.photoPath == rhs.profile.photoPath
     }
 }

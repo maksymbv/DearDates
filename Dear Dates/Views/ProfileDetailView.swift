@@ -2,199 +2,218 @@
 //  ProfileDetailView.swift
 //  DearDates
 //
-//  Created on 2025
+//  Created on 2026
 //
 
 import SwiftUI
+import SwiftData
+import UIKit
 
 struct ProfileDetailView: View {
-    @EnvironmentObject var dataManager: DataManager
-    @EnvironmentObject var notificationManager: NotificationManager
+    @Query private var allProfiles: [Profile]
+    @Query private var allGifts: [Gift]
+    @Query private var allEvents: [CustomEvent]
+    
+    @StateObject private var viewModel = ProfileDetailViewModel()
+    
+    @Environment(\.modelContext) var modelContext
+    @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var settingsManager: SettingsManager
     @EnvironmentObject var localizationManager: LocalizationManager
     @EnvironmentObject var imageManager: ImageManager
-    @Environment(\.colorScheme) var colorScheme
     
     let profileId: UUID
     
     private var profile: Profile? {
-        dataManager.profiles.first { $0.id == profileId }
+        allProfiles.first { $0.id == profileId }
     }
     
-    @State private var showingEditProfile = false
-    @State private var showingAddGift = false
-    @State private var showingEditGift: Gift? = nil
-    @State private var refreshTrigger = UUID()
+    private var profileGifts: [Gift] {
+        allGifts.filter { $0.profileId == profileId }
+    }
+    
+    private var giftIdeas: [Gift] {
+        profileGifts.filter { !$0.isGiven }
+    }
+    
+    private var givenGifts: [Gift] {
+        profileGifts.filter { $0.isGiven }
+    }
     
     var body: some View {
         Group {
             if let profile = profile {
-                ScrollView {
-                    VStack(spacing: 20) {
-                        headerInfo(profile: profile)
-                        notesSection(profile: profile)
-                        giftIdeasSection(profileId: profile.id)
-                        giftHistorySection(profileId: profile.id)
+                List {
+                    ProfileHeaderView(
+                        profile: profile,
+                        avatarImage: profile.photoPath.flatMap { imageManager.loadImage(from: $0) },
+                        locale: localizationManager.currentLanguage.locale
+                    )
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets())
+                    
+                    // Секция событий
+                    let profileEvents = allEvents.filter { $0.profileId == profile.id }.sorted { $0.nextDate < $1.nextDate }
+                    Section {
+                        if !profileEvents.isEmpty {
+                            ForEach(profileEvents, id: \.id) { event in
+                                Button(action: {
+                                    viewModel.showingEditEvent = event
+                                }) {
+                                    HStack {
+                                        HStack(spacing: 4) {
+                                            Text(event.name)
+                                                .font(.body)
+                                                .fontWeight(.bold)
+                                                .foregroundColor(.primary)
+                                                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                                            Text("·")
+                                                .font(.body)
+                                                .foregroundColor(.primary)
+                                                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                                            Text(DateFormatterHelper.formatEventDate(event.nextDate, locale: localizationManager.currentLanguage.locale))
+                                                .font(.body)
+                                                .foregroundColor(.primary)
+                                                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                                        }
+                                        Spacer()
+                                        Image(systemName: "chevron.right")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                            }
+                        } else {
+                            Text("message.add_first_event".localized)
+                                .font(.body)
+                                .foregroundColor(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    } header: {
+                        HStack {
+                            Text("section.events".localized)
+                            Spacer()
+                            Button(action: { viewModel.showingAddEvent = true }) {
+                                Image(systemName: "plus.circle.fill")
+                                    .font(.title)
+                                    .foregroundColor(settingsManager.accentColor.color)
+                            }
+                        }
                     }
-                    .padding(.vertical)
+                    
+                    if !profile.notes.isEmpty {
+                        Section {
+                            ProfileNotesSection(notes: profile.notes)
+                        } header: {
+                            Text("label.notes".localized)
+                        }
+                    }
+                    
+                    Section {
+                        GiftIdeasSection(
+                            giftIdeas: giftIdeas,
+                            onAddGift: { viewModel.showingAddGift = true },
+                            onEditGift: { viewModel.showingEditGift = $0 }
+                        )
+                    } header: {
+                        HStack {
+                            Text("label.gift_ideas".localized)
+                            Spacer()
+                            Button(action: { viewModel.showingAddGift = true }) {
+                                Image(systemName: "plus.circle.fill")
+                                    .font(.title)
+                                    .foregroundColor(settingsManager.accentColor.color)
+                            }
+                        }
+                    }
+                    
+                    Section {
+                        GiftHistorySection(
+                            givenGifts: givenGifts,
+                            onEditGift: { viewModel.showingEditGift = $0 }
+                        )
+                    }
                 }
-                .appBackground(colorScheme: colorScheme)
+                .listStyle(.insetGrouped)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItemGroup(placement: .navigationBarTrailing) {
-                        Button(action: { toggleFavorite(profile: profile) }) {
+                        Button(action: { viewModel.toggleFavorite(profile: profile, context: modelContext) }) {
                             Image(systemName: profile.isFavorite ? "star.fill" : "star")
                                 .foregroundColor(profile.isFavorite ? settingsManager.accentColor.color : .primary)
-                        }
-                        
-                        Button(action: { showingEditProfile = true }) {
+    }
+                        .accessibilityLabel(profile.isFavorite ? "accessibility.remove_favorite".localized : "accessibility.add_favorite".localized)
+    
+                        Button(action: { viewModel.showingEditProfile = true }) {
                             Image(systemName: "pencil")
                         }
+                        .accessibilityLabel("accessibility.edit_profile".localized)
                     }
                 }
-                .sheet(isPresented: $showingEditProfile) {
+                .fullScreenCover(isPresented: $viewModel.showingEditProfile) {
                     AddEditProfileView(profile: profile)
                 }
-                .sheet(isPresented: $showingAddGift) {
+                .fullScreenCover(isPresented: $viewModel.showingAddGift) {
                     AddEditGiftView(profileId: profile.id)
-                }
-                .sheet(item: $showingEditGift) { gift in
+    }
+                .fullScreenCover(item: $viewModel.showingEditGift) { gift in
                     AddEditGiftView(profileId: profile.id, gift: gift)
                 }
-                .onChange(of: showingEditGift) { oldValue, newValue in
-                    if newValue == nil {
-                        refreshTrigger = UUID()
+                .fullScreenCover(isPresented: $viewModel.showingAddEvent) {
+                    AddEditEventView(profileId: profile.id)
+                }
+                .fullScreenCover(item: $viewModel.showingEditEvent) { event in
+                    AddEditEventView(profileId: profile.id, event: event)
+                }
+                .onAppear {
+                    // Скрываем таб бар с анимацией
+                    if let tabBarController = findTabBarController() {
+                        UIView.animate(withDuration: 0.3) {
+                            tabBarController.tabBar.alpha = 0
+                            tabBarController.tabBar.isHidden = true
+                        }
                     }
                 }
-                .onChange(of: showingAddGift) { oldValue, newValue in
-                    if !newValue {
-                        refreshTrigger = UUID()
+                .onDisappear {
+                    // Показываем таб бар с анимацией
+                    if let tabBarController = findTabBarController() {
+                        tabBarController.tabBar.isHidden = false
+                        UIView.animate(withDuration: 0.3) {
+                            tabBarController.tabBar.alpha = 1
+                        }
                     }
-                }
-                .onReceive(dataManager.$gifts) { _ in
-                    refreshTrigger = UUID()
                 }
             } else {
-                Text("Профиль не найден")
+                Text("message.profile_not_found".localized)
                     .foregroundColor(.secondary)
             }
         }
-        .onReceive(dataManager.$profiles) { _ in
-            refreshTrigger = UUID()
-        }
     }
     
-    @ViewBuilder
-    private func headerInfo(profile: Profile) -> some View {
-        VStack(spacing: 12) {
-            AvatarView(
-                image: profile.photoPath.flatMap { imageManager.loadImage(from: $0) },
-                name: profile.name,
-                avatarColorHue: profile.avatarColorHue,
-                size: 120
-            )
-            
-            Text(profile.name)
-                .font(.title)
-                .fontWeight(.bold)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity)
-            
-            Text("\(DateFormatterHelper.formatBirthday(profile.nextBirthday, locale: localizationManager.currentLanguage.locale)) \("message.will_turn".localized) \(profile.age + 1)")
-                .font(.headline)
-                .foregroundColor(.secondary)
-        }
-        .padding()
-    }
+    // MARK: - Helper Methods
     
-    @ViewBuilder
-    private func notesSection(profile: Profile) -> some View {
-        if !profile.notes.isEmpty {
-            Text(profile.notes)
-                .font(.body)
-                .padding()
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(colorScheme == .dark ? Color(.systemGray6) : Color.gray.opacity(0.1))
-                .cornerRadius(8)
-                .padding(.horizontal)
+    private func findTabBarController() -> UITabBarController? {
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first,
+              let rootViewController = window.rootViewController else {
+            return nil
         }
-    }
-    
-    @ViewBuilder
-    private func giftIdeasSection(profileId: UUID) -> some View {
-        let giftIdeas = dataManager.getGiftIdeas(for: profileId)
         
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("label.gift_ideas".localized)
-                    .font(.headline)
-                    .padding(.horizontal)
-                
-                Spacer()
-                
-                Button(action: { showingAddGift = true }) {
-                    Image(systemName: "plus.circle.fill")
-                        .font(.title)
-                }
-                .padding(.horizontal)
-            }
-            
-            if giftIdeas.isEmpty {
-                Text("message.no_gift_ideas".localized)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-                    .padding(.horizontal)
-            } else {
-                ForEach(giftIdeas, id: \.id) { gift in
-                    GiftRowView(gift: gift, isIdea: true, onEdit: {
-                        showingEditGift = gift
-                    })
-                }
-            }
-        }
-        .id(refreshTrigger)
+        return findTabBarController(in: rootViewController)
     }
     
-    @ViewBuilder
-    private func giftHistorySection(profileId: UUID) -> some View {
-        let givenGifts = dataManager.getGivenGifts(for: profileId)
-        let groupedGifts = Gift.groupedByYear(givenGifts)
+    private func findTabBarController(in viewController: UIViewController) -> UITabBarController? {
+        if let tabBarController = viewController as? UITabBarController {
+            return tabBarController
+        }
         
-        if !groupedGifts.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
-                Text("label.gift_history".localized)
-                    .font(.headline)
-                    .padding(.horizontal)
-                
-                ForEach(groupedGifts.keys.sorted(by: >), id: \.self) { year in
-                    yearGiftsSection(year: year, gifts: groupedGifts[year] ?? [])
-                }
-            }
-            .id(refreshTrigger)
-        }
-    }
-    
-    @ViewBuilder
-    private func yearGiftsSection(year: Int, gifts: [Gift]) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("\(String(year))")
-                .font(.subheadline)
-                .fontWeight(.semibold)
-                .foregroundColor(.secondary)
-                .padding(.horizontal)
-            
-            ForEach(gifts, id: \.id) { gift in
-                GiftRowView(gift: gift, isIdea: false, onEdit: {
-                    showingEditGift = gift
-                })
+        for child in viewController.children {
+            if let tabBarController = findTabBarController(in: child) {
+                return tabBarController
             }
         }
+        
+        return nil
     }
     
-    private func toggleFavorite(profile: Profile) {
-        var updatedProfile = profile
-        updatedProfile.isFavorite.toggle()
-        updatedProfile.updatedAt = Date()
-        dataManager.updateProfile(updatedProfile, notificationManager: notificationManager)
-    }
 }

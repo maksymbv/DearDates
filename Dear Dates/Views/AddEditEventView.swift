@@ -1,0 +1,193 @@
+//
+//  AddEditEventView.swift
+//  DearDates
+//
+//  Created on 2026
+//
+
+import SwiftUI
+import SwiftData
+
+struct AddEditEventView: View {
+    @Environment(\.dismiss) var dismiss
+    @Environment(\.modelContext) var modelContext
+    @Environment(\.colorScheme) var colorScheme
+    @EnvironmentObject var localizationManager: LocalizationManager
+    
+    let profileId: UUID
+    var event: CustomEvent?
+    
+    @State private var eventName: String = ""
+    @State private var selectedMonth: Int = Calendar.current.component(.month, from: Date())
+    @State private var selectedDay: Int = Calendar.current.component(.day, from: Date())
+    @State private var remindAnnually: Bool = true
+    @State private var showingDeleteAlert = false
+    
+    private var validDays: [Int] {
+        let calendar = Calendar.current
+        let date = calendar.date(from: DateComponents(year: 2000, month: selectedMonth, day: 1))!
+        let range = calendar.range(of: .day, in: .month, for: date)!
+        return Array(range)
+    }
+    
+    private func monthName(_ month: Int) -> String {
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = localizationManager.currentLanguage.locale
+        return dateFormatter.monthSymbols[month - 1]
+    }
+    
+    init(profileId: UUID, event: CustomEvent? = nil) {
+        self.profileId = profileId
+        self.event = event
+    }
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("label.event_name".localized)) {
+                    TextField("label.event_name".localized, text: $eventName)
+                        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                }
+                
+                Section(header: Text("label.event_date".localized)) {
+                    HStack(spacing: 0) {
+                        // Picker для дня (первый)
+                        Picker("label.day".localized, selection: $selectedDay) {
+                            ForEach(validDays, id: \.self) { day in
+                                Text("\(day)")
+                                    .tag(day)
+                            }
+                        }
+                        .pickerStyle(.wheel)
+                        .frame(maxWidth: .infinity)
+                        .onChange(of: selectedMonth) { oldValue, newValue in
+                            // Обновляем день при изменении месяца, если текущий день невалиден
+                            if selectedDay > validDays.count {
+                                selectedDay = validDays.count
+                            }
+                        }
+                        
+                        // Picker для месяца (второй)
+                        Picker("label.month".localized, selection: $selectedMonth) {
+                            ForEach(1...12, id: \.self) { month in
+                                Text(monthName(month))
+                                    .tag(month)
+                            }
+                        }
+                        .pickerStyle(.wheel)
+                        .frame(maxWidth: .infinity)
+                    }
+                    .frame(height: 200)
+                }
+                
+                Section {
+                    Toggle("label.remind_annually".localized, isOn: $remindAnnually)
+                        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                }
+                
+                // Кнопка удаления (только для редактирования существующего события)
+                if event != nil {
+                    Section {
+                        Button(role: .destructive, action: {
+                            showingDeleteAlert = true
+                        }) {
+                            HStack {
+                                Spacer()
+                                Text("button.delete".localized)
+                                Spacer()
+                            }
+                        }
+                        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                    }
+                }
+            }
+            .navigationTitle(event == nil ? "button.add_event".localized : "button.edit".localized)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "xmark")
+                    }
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    // Кнопка сохранения
+                    Button(action: { saveEvent() }) {
+                        Image(systemName: "checkmark")
+                    }
+                    .disabled(eventName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .onAppear {
+                loadEvent()
+            }
+            .alert("message.delete_event_confirm".localized, isPresented: $showingDeleteAlert) {
+                Button("button.cancel".localized, role: .cancel) { }
+                Button("button.delete".localized, role: .destructive) {
+                    deleteEvent()
+                }
+            } message: {
+                Text("message.delete_event_description".localized)
+            }
+        }
+    }
+    
+    private func loadEvent() {
+        if let event = event {
+            eventName = event.name
+            selectedMonth = event.month
+            selectedDay = event.day
+            remindAnnually = event.remindAnnually
+        }
+    }
+    
+    private func saveEvent() {
+        let trimmedName = eventName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else { return }
+        
+        // Используем выбранные месяц и день напрямую
+        let month = selectedMonth
+        let day = min(selectedDay, validDays.count) // Убеждаемся, что день валиден
+        
+        if let existingEvent = event {
+            existingEvent.name = trimmedName
+            existingEvent.month = month
+            existingEvent.day = day
+            existingEvent.remindAnnually = remindAnnually
+            existingEvent.updatedAt = Date()
+        } else {
+            let newEvent = CustomEvent(
+                profileId: profileId,
+                name: trimmedName,
+                month: month,
+                day: day,
+                remindAnnually: remindAnnually
+            )
+            modelContext.insert(newEvent)
+        }
+        
+        do {
+            try modelContext.save()
+            dismiss()
+        } catch {
+            AppLogger.log("Error saving event: \(error.localizedDescription)", level: .error, category: "AddEditEventView")
+            ErrorManager.shared.showError(.dataSaveFailed(error.localizedDescription))
+        }
+    }
+    
+    private func deleteEvent() {
+        guard let event = event else { return }
+        
+        modelContext.delete(event)
+        
+        do {
+            try modelContext.save()
+            dismiss()
+        } catch {
+            AppLogger.log("Error deleting event: \(error.localizedDescription)", level: .error, category: "AddEditEventView")
+            ErrorManager.shared.showError(.dataSaveFailed(error.localizedDescription))
+        }
+    }
+    
+}
+

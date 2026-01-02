@@ -2,7 +2,7 @@
 //  EmptyStateView.swift
 //  DearDates
 //
-//  Created on 2025
+//  Created on 2026
 //
 
 import SwiftUI
@@ -13,6 +13,7 @@ struct EmptyStateView: View {
             Image(systemName: "person.and.background.dotted")
                 .font(.system(size: 60))
                 .foregroundColor(.accentColor)
+                .accessibilityHidden(true)
             
             Text("empty.no_profiles_title".localized)
                 .font(.title2)
@@ -24,5 +25,7 @@ struct EmptyStateView: View {
                 .multilineTextAlignment(.center)
                 .padding(.horizontal)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("empty.no_profiles_title".localized + ". " + "empty.no_profiles_message".localized)
     }
 }

@@ -2,7 +2,7 @@
 //  AvatarView.swift
 //  DearDates
 //
-//  Created on 2025
+//  Created on 2026
 //
 
 import SwiftUI
@@ -27,8 +27,10 @@ struct AvatarView: View {
                 Image(uiImage: image)
                     .resizable()
                     .aspectRatio(contentMode: .fill)
-                    .frame(width: size, height: size)
+                    .frame(width: max(size, 1), height: max(size, 1))
+                    .clipped()
                     .clipShape(Circle())
+                    .accessibilityLabel("accessibility.profile_photo".localized + " \(name)")
             } else {
                 Circle()
                     .fill(Color.pastelColor(hue: avatarColorHue).opacity(colorScheme == .dark ? 0.6 : 0.7))
@@ -39,6 +41,7 @@ struct AvatarView: View {
                             .fontWeight(.semibold)
                             .foregroundColor(.white)
                     )
+                    .accessibilityLabel("accessibility.profile_avatar".localized + " \(name)")
             }
         }
     }
