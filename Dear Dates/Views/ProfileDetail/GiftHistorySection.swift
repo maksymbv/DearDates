@@ -37,12 +37,17 @@ struct YearGiftsSection: View {
     let gifts: [Gift]
     let onEditGift: (Gift) -> Void
     
+    private var sortedGifts: [Gift] {
+        gifts.sorted { $0.updatedAt > $1.updatedAt }
+    }
+    
     var body: some View {
         Section {
-            ForEach(gifts) { gift in
+            ForEach(sortedGifts) { gift in
                 GiftRowView(gift: gift, isIdea: false, onEdit: {
                     onEditGift(gift)
                 })
+                .transition(.opacity.combined(with: .scale))
             }
         } header: {
             Text("\(String(year))")

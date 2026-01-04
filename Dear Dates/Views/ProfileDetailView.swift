@@ -50,10 +50,16 @@ struct ProfileDetailView: View {
                         locale: localizationManager.currentLanguage.locale
                     )
                     .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets())
+                    .listRowInsets(EdgeInsets(top: -50, leading: 0, bottom: 0, trailing: 0))
                     
                     // Секция событий
-                    let profileEvents = allEvents.filter { $0.profileId == profile.id }.sorted { $0.nextDate < $1.nextDate }
+                    let profileEvents = allEvents.filter { $0.profileId == profile.id }.sorted { event1, event2 in
+                        // События сегодня идут первыми
+                        if event1.isToday && !event2.isToday { return true }
+                        if !event1.isToday && event2.isToday { return false }
+                        // Остальные сортируются по дате
+                        return event1.nextDate < event2.nextDate
+                    }
                     Section {
                         if !profileEvents.isEmpty {
                             ForEach(profileEvents, id: \.id) { event in
@@ -64,7 +70,7 @@ struct ProfileDetailView: View {
                                         HStack(spacing: 4) {
                                             Text(event.name)
                                                 .font(.body)
-                                                .fontWeight(.bold)
+                                                .fontWeight(.medium)
                                                 .foregroundColor(.primary)
                                                 .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                                             Text("·")
@@ -135,15 +141,16 @@ struct ProfileDetailView: View {
                     }
                 }
                 .listStyle(.insetGrouped)
+                .contentMargins(.top, 0, for: .scrollContent)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItemGroup(placement: .navigationBarTrailing) {
                         Button(action: { viewModel.toggleFavorite(profile: profile, context: modelContext) }) {
                             Image(systemName: profile.isFavorite ? "star.fill" : "star")
                                 .foregroundColor(profile.isFavorite ? settingsManager.accentColor.color : .primary)
-    }
+                        }
                         .accessibilityLabel(profile.isFavorite ? "accessibility.remove_favorite".localized : "accessibility.add_favorite".localized)
-    
+                        
                         Button(action: { viewModel.showingEditProfile = true }) {
                             Image(systemName: "pencil")
                         }
@@ -155,7 +162,7 @@ struct ProfileDetailView: View {
                 }
                 .fullScreenCover(isPresented: $viewModel.showingAddGift) {
                     AddEditGiftView(profileId: profile.id)
-    }
+                }
                 .fullScreenCover(item: $viewModel.showingEditGift) { gift in
                     AddEditGiftView(profileId: profile.id, gift: gift)
                 }

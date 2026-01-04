@@ -14,6 +14,7 @@ struct AddEditGiftView: View {
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var dataManager: DataManager
     @EnvironmentObject var localizationManager: LocalizationManager
+    @EnvironmentObject var settingsManager: SettingsManager
     
     @Query private var allEvents: [CustomEvent]
     
@@ -194,7 +195,7 @@ struct AddEditGiftView: View {
             Divider()
             
             HStack {
-                Text("section.events".localized)
+                Text("section.add_to_event".localized)
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                 
@@ -230,15 +231,15 @@ struct AddEditGiftView: View {
                            let selectedEvent = profileEvents.first(where: { $0.id == selectedEventId }) {
                             Text(selectedEvent.name)
                                 .font(.body)
-                                .foregroundColor(.primary)
+                                .foregroundColor(settingsManager.accentColor.color)
                         } else {
                             Text("label.not_selected".localized)
                                 .font(.body)
-                                .foregroundColor(.secondary)
+                                .foregroundColor(settingsManager.accentColor.color)
                         }
                         Image(systemName: "chevron.up.chevron.down")
                             .font(.caption)
-                            .foregroundColor(.secondary)
+                            .foregroundColor(settingsManager.accentColor.color)
                     }
                 }
             }

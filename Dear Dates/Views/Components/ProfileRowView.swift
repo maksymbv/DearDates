@@ -13,27 +13,35 @@ struct ProfileRowView: View {
     
     @EnvironmentObject var imageManager: ImageManager
     @EnvironmentObject var localizationManager: LocalizationManager
+    @EnvironmentObject var settingsManager: SettingsManager
     @Environment(\.colorScheme) var colorScheme
     
     let profile: Profile
-    let accentColor: Color
     let locale: Locale
     
-    init(profile: Profile, accentColor: Color, locale: Locale) {
+    init(profile: Profile, locale: Locale) {
         self.profile = profile
-        self.accentColor = accentColor
         self.locale = locale
     }
     
+    private var accentColor: Color {
+        settingsManager.accentColor.color
+    }
+    
     // Вычисляем следующее событие внутри компонента
-    private var nextEvent: (name: String, date: Date, daysUntil: Int)? {
+    private var nextEvent: (name: String, date: Date, daysUntil: Int, isToday: Bool)? {
         // Добавляем только пользовательские события
         let profileEvents = allEvents.filter { $0.profileId == profile.id }
         
-        // Сортируем по дате и возвращаем ближайшее
+        // Сортируем по дате и возвращаем ближайшее (сегодня имеет приоритет)
+        let todayEvents = profileEvents.filter { $0.isToday }
+        if let todayEvent = todayEvents.first {
+            return (name: todayEvent.name, date: todayEvent.nextDate, daysUntil: todayEvent.daysUntil, isToday: true)
+        }
+        
         return profileEvents
             .map { event in
-                (name: event.name, date: event.nextDate, daysUntil: event.daysUntil)
+                (name: event.name, date: event.nextDate, daysUntil: event.daysUntil, isToday: event.isToday)
             }
             .sorted { $0.date < $1.date }
             .first
@@ -118,7 +126,14 @@ struct ProfileRowView: View {
     
     @ViewBuilder
     private var daysUntilSection: some View {
-        if let daysText = daysUntilText {
+        if let event = nextEvent, event.isToday {
+            // Бейджик "сегодня" в том же стиле, что и "через N дней"
+            Text("message.today".localized)
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundColor(accentColor)
+                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+        } else if let daysText = daysUntilText {
             Text(daysText)
                 .font(.caption)
                 .fontWeight(.medium)

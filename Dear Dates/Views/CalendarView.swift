@@ -126,7 +126,6 @@ struct CalendarView: View {
                                         NavigationLink(destination: ProfileDetailView(profileId: profile.id)) {
                                             ProfileRowView(
                                                 profile: profile,
-                                                accentColor: settingsManager.accentColor.color,
                                                 locale: localizationManager.currentLanguage.locale
                                             )
                                             .transition(.opacity.combined(with: .move(edge: .top)))

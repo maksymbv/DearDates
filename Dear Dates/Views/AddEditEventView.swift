@@ -22,6 +22,7 @@ struct AddEditEventView: View {
     @State private var selectedDay: Int = Calendar.current.component(.day, from: Date())
     @State private var remindAnnually: Bool = true
     @State private var showingDeleteAlert = false
+    @State private var showingDatePicker = false
     
     private var validDays: [Int] {
         let calendar = Calendar.current
@@ -45,39 +46,30 @@ struct AddEditEventView: View {
         NavigationView {
             Form {
                 Section(header: Text("label.event_name".localized)) {
-                    TextField("label.event_name".localized, text: $eventName)
-                        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                    TextField("label.event_name_placeholder".localized, text: Binding(
+                        get: { eventName },
+                        set: { newValue in
+                            if newValue.count <= AppConstants.TextLimits.maxEventNameLength {
+                                eventName = newValue
+                            }
+                        }
+                    ))
+                    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                 }
                 
                 Section(header: Text("label.event_date".localized)) {
-                    HStack(spacing: 0) {
-                        // Picker для дня (первый)
-                        Picker("label.day".localized, selection: $selectedDay) {
-                            ForEach(validDays, id: \.self) { day in
-                                Text("\(day)")
-                                    .tag(day)
-                            }
+                    Button(action: {
+                        showingDatePicker = true
+                    }) {
+                        HStack {
+                            Text("\(selectedDay) \(monthName(selectedMonth))")
+                                .foregroundColor(.primary)
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
-                        .pickerStyle(.wheel)
-                        .frame(maxWidth: .infinity)
-                        .onChange(of: selectedMonth) { oldValue, newValue in
-                            // Обновляем день при изменении месяца, если текущий день невалиден
-                            if selectedDay > validDays.count {
-                                selectedDay = validDays.count
-                            }
-                        }
-                        
-                        // Picker для месяца (второй)
-                        Picker("label.month".localized, selection: $selectedMonth) {
-                            ForEach(1...12, id: \.self) { month in
-                                Text(monthName(month))
-                                    .tag(month)
-                            }
-                        }
-                        .pickerStyle(.wheel)
-                        .frame(maxWidth: .infinity)
                     }
-                    .frame(height: 200)
                 }
                 
                 Section {
@@ -128,6 +120,62 @@ struct AddEditEventView: View {
                 }
             } message: {
                 Text("message.delete_event_description".localized)
+            }
+            .sheet(isPresented: $showingDatePicker) {
+                datePickerSheet
+                    .presentationDetents([.height(250)])
+            }
+        }
+    }
+    
+    private var datePickerSheet: some View {
+        NavigationView {
+            HStack(spacing: 0) {
+                // Picker для дня (первый)
+                Picker("label.day".localized, selection: $selectedDay) {
+                    ForEach(validDays, id: \.self) { day in
+                        Text("\(day)")
+                            .tag(day)
+                    }
+                }
+                .pickerStyle(.wheel)
+                .frame(maxWidth: .infinity)
+                .onChange(of: selectedMonth) { oldValue, newValue in
+                    // Обновляем день при изменении месяца, если текущий день невалиден
+                    if selectedDay > validDays.count {
+                        selectedDay = validDays.count
+                    }
+                }
+                
+                // Picker для месяца (второй)
+                Picker("label.month".localized, selection: $selectedMonth) {
+                    ForEach(1...12, id: \.self) { month in
+                        Text(monthName(month))
+                            .tag(month)
+                    }
+                }
+                .pickerStyle(.wheel)
+                .frame(maxWidth: .infinity)
+            }
+            .frame(height: 200)
+            .navigationTitle("label.event_date".localized)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
+                        showingDatePicker = false
+                    }) {
+                        Image(systemName: "xmark")
+                    }
+                }
+                
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: {
+                        showingDatePicker = false
+                    }) {
+                        Image(systemName: "checkmark")
+                    }
+                }
             }
         }
     }

@@ -91,7 +91,6 @@ struct SearchView: View {
                                     NavigationLink(destination: ProfileDetailView(profileId: profile.id)) {
                                         ProfileRowView(
                                             profile: profile,
-                                            accentColor: settingsManager.accentColor.color,
                                             locale: localizationManager.currentLanguage.locale
                                         )
                                     }

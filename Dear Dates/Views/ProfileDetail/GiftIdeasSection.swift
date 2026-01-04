@@ -24,6 +24,7 @@ struct GiftIdeasSection: View {
                     GiftRowView(gift: gift, isIdea: true, onEdit: {
                         onEditGift(gift)
                     })
+                    .transition(.opacity.combined(with: .scale))
                 }
             }
         }

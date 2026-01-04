@@ -9,7 +9,9 @@ import SwiftUI
 
 struct AppConstants {
     struct TextLimits {
-        static let maxNotesLength = 10000
+        static let maxProfileNameLength = 30
+        static let maxEventNameLength = 50
+        static let maxNotesLength = 500
         static let maxDescriptionLength = 10000
     }
     

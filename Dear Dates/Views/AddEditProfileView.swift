@@ -148,10 +148,17 @@ struct AddEditProfileView: View {
     @ViewBuilder
     private var mainInfoSection: some View {
         Section(header: Text("section.main_info".localized)) {
-            TextField("", text: $viewModel.name)
-                .accessibilityLabel("accessibility.name_field".localized)
-                .accessibilityHint("accessibility.name_field_hint".localized)
-                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+            TextField("", text: Binding(
+                get: { viewModel.name },
+                set: { newValue in
+                    if newValue.count <= AppConstants.TextLimits.maxProfileNameLength {
+                        viewModel.name = newValue
+                    }
+                }
+            ))
+            .accessibilityLabel("accessibility.name_field".localized)
+            .accessibilityHint("accessibility.name_field_hint".localized)
+            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         }
     }
     // MARK: - Notes Section

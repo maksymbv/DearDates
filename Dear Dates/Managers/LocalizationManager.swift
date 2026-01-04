@@ -115,7 +115,8 @@ struct LocalizedStrings {
         "label.accent_color": "Акцентный цвет",
         "label.color_pink": "Розовый",
         "label.color_blue": "Синий",
-        "label.event_name": "Название",
+        "label.event_name": "Название события",
+        "label.event_name_placeholder": "День рождения, Годовщина, Новый год...",
         "label.remind_annually": "Напоминать ежегодно",
         "label.event": "Событие",
         "label.month": "Месяц",
@@ -172,9 +173,10 @@ struct LocalizedStrings {
         
         // Sections
         "section.main_info": "Имя",
-        "section.events": "События",
+        "section.add_to_event": "Добавить к событию",
         "section.gifts_info": "Информация о подарке",
         "section.appearance": "Внешний вид",
+        "section.events": "События",
         
         // Empty states
         "empty.no_profiles_title": "Тут кого-то не хватает...",
@@ -302,7 +304,8 @@ struct LocalizedStrings {
         "label.accent_color": "Акцентний колір",
         "label.color_pink": "Рожевий",
         "label.color_blue": "Синій",
-        "label.event_name": "Назва",
+        "label.event_name": "Назва події",
+        "label.event_name_placeholder": "День народження, Річниця, Новий рік...",
         "label.remind_annually": "Нагадувати щорічно",
         "label.event": "Подія",
         "label.month": "Місяць",
@@ -359,10 +362,10 @@ struct LocalizedStrings {
         
         // Sections
         "section.main_info": "Ім'я",
-        "section.events": "Події",
+        "section.add_to_event": "Додати до події",
         "section.gifts_info": "Інформація про подарунок",
         "section.appearance": "Зовнішній вигляд",
-        
+        "section.events": "Події",
         // Empty states
         "empty.no_profiles_title": "Тут когось не вистачає...",
         "empty.no_profiles_message": "Додай свою першу важливу людину, щоб не проґавити її свято та вчасно записати круту ідею.",
@@ -489,7 +492,8 @@ struct LocalizedStrings {
         "label.accent_color": "Accent Color",
         "label.color_pink": "Pink",
         "label.color_blue": "Blue",
-        "label.event_name": "Name",
+        "label.event_name": "Event Name",
+        "label.event_name_placeholder": "Birthday, Anniversary, New Year...",
         "label.remind_annually": "Remind annually",
         "label.event": "Event",
         "label.month": "Month",
@@ -546,9 +550,10 @@ struct LocalizedStrings {
         
         // Sections
         "section.main_info": "Name",
-        "section.events": "Events",
+        "section.add_to_event": "Add to event",
         "section.gifts_info": "Gift Information",
         "section.appearance": "Appearance",
+        "section.events": "Events",
         
         // Empty states
         "empty.no_profiles_title": "There's someone missing here...",

@@ -143,7 +143,6 @@ struct ListView: View {
         }) {
             ProfileRowView(
                 profile: profile,
-                accentColor: settingsManager.accentColor.color,
                 locale: localizationManager.currentLanguage.locale
             )
             .frame(maxWidth: .infinity, alignment: .leading)
