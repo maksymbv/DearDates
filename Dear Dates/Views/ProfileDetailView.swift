@@ -50,7 +50,7 @@ struct ProfileDetailView: View {
                         locale: localizationManager.currentLanguage.locale
                     )
                     .listRowBackground(Color.clear)
-                    .listRowInsets(EdgeInsets(top: -50, leading: 0, bottom: 0, trailing: 0))
+                    .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
                     
                     // Секция событий
                     let profileEvents = allEvents.filter { $0.profileId == profile.id }.sorted { event1, event2 in
@@ -100,8 +100,8 @@ struct ProfileDetailView: View {
                             Text("section.events".localized)
                             Spacer()
                             Button(action: { viewModel.showingAddEvent = true }) {
-                                Image(systemName: "plus.circle.fill")
-                                    .font(.title)
+                                Image(systemName: "plus")
+                                    .font(.title2)
                                     .foregroundColor(settingsManager.accentColor.color)
                             }
                         }
@@ -126,8 +126,8 @@ struct ProfileDetailView: View {
                             Text("label.gift_ideas".localized)
                             Spacer()
                             Button(action: { viewModel.showingAddGift = true }) {
-                                Image(systemName: "plus.circle.fill")
-                                    .font(.title)
+                                Image(systemName: "plus")
+                                    .font(.title2)
                                     .foregroundColor(settingsManager.accentColor.color)
                             }
                         }

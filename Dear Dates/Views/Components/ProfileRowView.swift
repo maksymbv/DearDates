@@ -18,10 +18,12 @@ struct ProfileRowView: View {
     
     let profile: Profile
     let locale: Locale
+    let searchText: String?
     
-    init(profile: Profile, locale: Locale) {
+    init(profile: Profile, locale: Locale, searchText: String? = nil) {
         self.profile = profile
         self.locale = locale
+        self.searchText = searchText
     }
     
     private var accentColor: Color {
@@ -95,9 +97,13 @@ struct ProfileRowView: View {
     @ViewBuilder
     private var nameAndDaysSection: some View {
         HStack(spacing: 8) {
-            Text(profile.name)
-                .font(.headline)
-                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+            HighlightedText(
+                profile.name,
+                searchText: searchText ?? "",
+                highlightColor: accentColor
+            )
+            .font(.headline)
+            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             
             // Звездочка рядом с именем
             if profile.isFavorite {
@@ -143,10 +149,29 @@ struct ProfileRowView: View {
     }
     
     @ViewBuilder
+    private var notesSection: some View {
+        if let searchText = searchText,
+           !searchText.isEmpty,
+           !profile.notes.isEmpty,
+           profile.notes.lowercased().contains(searchText.lowercased()) {
+            HighlightedText(
+                profile.notes,
+                searchText: searchText,
+                highlightColor: accentColor
+            )
+            .font(.caption)
+            .foregroundColor(.secondary)
+            .lineLimit(2)
+            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+        }
+    }
+    
+    @ViewBuilder
     private var infoSection: some View {
         VStack(alignment: .leading, spacing: 4) {
             nameAndDaysSection
             eventInfoSection
+            notesSection
         }
     }
     
@@ -175,6 +200,8 @@ extension ProfileRowView: Equatable {
         lhs.profile.id == rhs.profile.id &&
         lhs.profile.name == rhs.profile.name &&
         lhs.profile.isFavorite == rhs.profile.isFavorite &&
-        lhs.profile.photoPath == rhs.profile.photoPath
+        lhs.profile.photoPath == rhs.profile.photoPath &&
+        lhs.profile.notes == rhs.profile.notes &&
+        lhs.searchText == rhs.searchText
     }
 }

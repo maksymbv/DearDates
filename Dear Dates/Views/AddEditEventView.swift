@@ -26,8 +26,11 @@ struct AddEditEventView: View {
     
     private var validDays: [Int] {
         let calendar = Calendar.current
-        let date = calendar.date(from: DateComponents(year: 2000, month: selectedMonth, day: 1))!
-        let range = calendar.range(of: .day, in: .month, for: date)!
+        guard let date = calendar.date(from: DateComponents(year: 2000, month: selectedMonth, day: 1)),
+              let range = calendar.range(of: .day, in: .month, for: date) else {
+            // Fallback: return days 1-31 if date calculation fails
+            return Array(1...31)
+        }
         return Array(range)
     }
     

@@ -12,22 +12,34 @@ struct LimitedTextEditor: View {
     @Binding var text: String
     let maxLength: Int
     let height: CGFloat
+    let placeholder: String?
     
-    init(text: Binding<String>, maxLength: Int, height: CGFloat) {
+    init(text: Binding<String>, maxLength: Int, height: CGFloat, placeholder: String? = nil) {
         self._text = text
         self.maxLength = maxLength
         self.height = height
+        self.placeholder = placeholder
     }
     
     var body: some View {
-        TextEditor(text: Binding(
-            get: { text },
-            set: { newValue in
-                if newValue.count <= maxLength {
-                    text = newValue
-                }
+        ZStack(alignment: .topLeading) {
+            if text.isEmpty, let placeholder = placeholder {
+                Text(placeholder)
+                    .foregroundColor(Color(.placeholderText))
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 8)
+                    .allowsHitTesting(false)
             }
-        ))
-        .frame(height: height)
+            
+            TextEditor(text: Binding(
+                get: { text },
+                set: { newValue in
+                    if newValue.count <= maxLength {
+                        text = newValue
+                    }
+                }
+            ))
+            .frame(height: height)
+        }
     }
 }

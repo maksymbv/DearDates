@@ -87,12 +87,14 @@ struct SearchView: View {
                                             .font(.headline)
                                             .padding(.horizontal)
                                         
-                                ForEach(filteredProfiles) { profile in
+                                ForEach(filteredProfiles, id: \.id) { profile in
                                     NavigationLink(destination: ProfileDetailView(profileId: profile.id)) {
                                         ProfileRowView(
                                             profile: profile,
-                                            locale: localizationManager.currentLanguage.locale
+                                            locale: localizationManager.currentLanguage.locale,
+                                            searchText: searchText
                                         )
+                                        .id("\(profile.id.uuidString)_\(searchText)")
                                     }
                                     .buttonStyle(PlainButtonStyle())
                                             .padding(.horizontal)
@@ -109,7 +111,11 @@ struct SearchView: View {
                                         
                                         ForEach(filteredGiftIdeas, id: \.gift.id) { item in
                                             NavigationLink(destination: ProfileDetailView(profileId: item.profile.id)) {
-                                                GiftIdeaSearchRow(gift: item.gift, profile: item.profile)
+                                                GiftIdeaSearchRow(
+                                                    gift: item.gift,
+                                                    profile: item.profile,
+                                                    searchText: searchText
+                                                )
                                             }
                                             .buttonStyle(PlainButtonStyle())
                                             .padding(.horizontal)

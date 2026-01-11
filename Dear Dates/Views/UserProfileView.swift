@@ -76,6 +76,9 @@ struct UserProfileView: View {
                                     .frame(width: 120, height: 120)
                                 }
                             }
+                            .buttonStyle(PlainButtonStyle())
+                            .accessibilityLabel("accessibility.add_photo_button".localized)
+                            .accessibilityHint("accessibility.add_photo_button_hint".localized)
                             
                             Spacer()
                         }
@@ -83,7 +86,7 @@ struct UserProfileView: View {
                     }
                     
                     Section(header: Text("section.main_info".localized)) {
-                        TextField("", text: $name)
+                        TextField("label.user_profile_name_placeholder".localized, text: $name)
                     }
                     
                     Section(header: Text("label.statistics".localized)) {
@@ -119,16 +122,20 @@ struct UserProfileView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button("button.cancel".localized) {
-                        dismiss()
+                    Button(action: { dismiss() }) {
+                        Image(systemName: "xmark")
                     }
+                    .accessibilityLabel("button.cancel".localized)
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("button.save".localized) {
+                    Button(action: {
                         saveProfile()
                         dismiss()
+                    }) {
+                        Image(systemName: "checkmark")
                     }
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .accessibilityLabel("button.save".localized)
                 }
             }
             .sheet(isPresented: $showingImagePicker) {

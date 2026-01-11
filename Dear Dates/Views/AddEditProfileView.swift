@@ -118,6 +118,7 @@ struct AddEditProfileView: View {
         }) {
             photoContent
         }
+        .buttonStyle(PlainButtonStyle())
         .accessibilityLabel("accessibility.add_photo_button".localized)
         .accessibilityHint("accessibility.add_photo_button_hint".localized)
     }
@@ -138,8 +139,6 @@ struct AddEditProfileView: View {
                                             .foregroundColor(settingsManager.accentColor.color)
                                     }
                                     .frame(width: 100, height: 100)
-                                    .background(settingsManager.accentColor.color.opacity(0.1))
-                                    .clipShape(Circle())
                                 }
                             }
                             
@@ -148,7 +147,7 @@ struct AddEditProfileView: View {
     @ViewBuilder
     private var mainInfoSection: some View {
         Section(header: Text("section.main_info".localized)) {
-            TextField("", text: Binding(
+            TextField("label.profile_name_placeholder".localized, text: Binding(
                 get: { viewModel.name },
                 set: { newValue in
                     if newValue.count <= AppConstants.TextLimits.maxProfileNameLength {
@@ -169,7 +168,8 @@ struct AddEditProfileView: View {
                         LimitedTextEditor(
                 text: $viewModel.notes,
                             maxLength: AppConstants.TextLimits.maxNotesLength,
-                            height: AppConstants.UI.notesFieldHeight
+                            height: AppConstants.UI.notesFieldHeight,
+                            placeholder: "label.profile_notes_placeholder".localized
                         )
                     }
     }

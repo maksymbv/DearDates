@@ -9,28 +9,52 @@ import SwiftUI
 
 struct GiftIdeaSearchRow: View {
     @Environment(\.colorScheme) var colorScheme
+    @EnvironmentObject var settingsManager: SettingsManager
     let gift: Gift
     let profile: Profile
+    let searchText: String?
+    
+    init(gift: Gift, profile: Profile, searchText: String? = nil) {
+        self.gift = gift
+        self.profile = profile
+        self.searchText = searchText
+    }
+    
+    private var accentColor: Color {
+        settingsManager.accentColor.color
+    }
     
     var body: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(gift.title)
-                    .font(.headline)
-                    .foregroundColor(.primary)
+                HighlightedText(
+                    gift.title,
+                    searchText: searchText ?? "",
+                    highlightColor: accentColor
+                )
+                .font(.headline)
+                .foregroundColor(.primary)
                 
                 if !gift.notes.isEmpty {
-                    Text(gift.notes)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .lineLimit(2)
-                        .truncationMode(.tail)
+                    HighlightedText(
+                        gift.notes,
+                        searchText: searchText ?? "",
+                        highlightColor: accentColor
+                    )
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .lineLimit(2)
+                    .truncationMode(.tail)
                 }
                 
-                Text(profile.name)
-                    .font(.caption2)
-                    .foregroundColor(.secondary)
-                    .padding(.top, 2)
+                HighlightedText(
+                    profile.name,
+                    searchText: searchText ?? "",
+                    highlightColor: accentColor
+                )
+                .font(.caption2)
+                .foregroundColor(.secondary)
+                .padding(.top, 2)
             }
             
             Spacer()

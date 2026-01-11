@@ -46,7 +46,7 @@ struct SettingsView: View {
                 .scrollContentBackground(.hidden)
             }
             .navigationTitle("navigation.settings".localized)
-            .sheet(isPresented: $viewModel.showingUserProfile) {
+            .fullScreenCover(isPresented: $viewModel.showingUserProfile) {
                 UserProfileView()
             }
             .sheet(isPresented: $viewModel.showingSupportEmail) {

@@ -84,7 +84,11 @@ struct CalendarView: View {
     // Проверяем, нужно ли показывать плашку
     var shouldShowNoEventsBanner: Bool {
         // Показываем, если выбран сегодня или ничего не выбрано, и нет событий сегодня
-        let isTodaySelected = selectedDate != nil && Calendar.current.isDateInToday(selectedDate!)
+        let isTodaySelected = if let date = selectedDate {
+            Calendar.current.isDateInToday(date)
+        } else {
+            false
+        }
         let isNothingSelected = selectedDate == nil
         
         return (isTodaySelected || isNothingSelected) && !hasEventsToday && nearestEvent != nil
