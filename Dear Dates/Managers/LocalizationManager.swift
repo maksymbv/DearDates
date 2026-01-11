@@ -89,6 +89,7 @@ struct LocalizedStrings {
         "button.delete_gift": "Удалить идею",
         "button.add_event": "Добавить событие",
         "button.ok": "ОК",
+        "button.touchid_authenticate": "Разблокировать",
         
         // Labels
         "label.name": "Имя",
@@ -148,6 +149,10 @@ struct LocalizedStrings {
         "message.no_events_today": "На сегодня событий нет",
         "message.nearest_event": "ближайшее",
         "message.add_first_event": "Добавьте первое событие",
+        
+        // Easter Egg
+        "easteregg.title": "Маленькое письмо",
+        "easteregg.message": "Привет, меня зовут Максим, я создатель Dear Dates.\n\nКак и многие, я люблю дарить радость, ловить теплые эмоции и видеть, что людям приятно. Но, к сожалению не всегда помню важные даты, даже если это близкие люди. Именно поэтому пришла идея создать приложение, которое помогает не пропускать важные даты и записывать идеи того что можно подарить в нужный момент.\n\nЯ сам пользуюсь Dear Dates и делаю его для вас так, как сделал бы для себя. Рад, что вы установили его. Даже если оно прожило в вашем телефоне недолго, я искренне благодарен - вы показали, что мои старания не зря.\n\nВпереди еще много всего интересного. Желаю вам теплых воспоминаний, радостных моментов и бесценных мгновений с близкими.\n\nС уважением,\nМаксим Баранов",
         
         // Onboarding
         "onboarding.welcome.title": "Добро пожаловать в Dear Dates",
@@ -281,6 +286,7 @@ struct LocalizedStrings {
         "button.delete_profile": "Видалити профіль",
         "button.delete_gift": "Видалити ідею",
         "button.ok": "ОК",
+        "button.touchid_authenticate": "Розблокувати",
         
         // Labels
         "label.name": "Ім'я",
@@ -341,8 +347,12 @@ struct LocalizedStrings {
         "message.nearest_event": "найближче",
         "message.add_first_event": "Додайте першу подію",
         
+        // Easter Egg
+        "easteregg.title": "Маленький лист",
+        "easteregg.message": "Привіт, мене звати Максим, я творець Dear Dates.\n\nЯк і більшість з нас, я люблю дарувати радість, ловити теплі емоції та бачити, що людям приємно. Але, на жаль, не завжди пам'ятаю важливі дати, навіть якщо це близькі люди. Саме тому виникла ідея створити додаток, який допомагає не пропускати важливі дати та записувати ідеї того, що можна подарувати у потрібний момент.\n\nЯ сам користуюсь Dear Dates і роблю його для вас так, як зробив би для себе. Радий, що ви його встановили. Навіть якщо він пробув у вашому телефоні недовго, я щиро вдячний — ви показали, що мої старання не марні.\n\nПопереду ще багато цікавого. Бажаю вам теплих спогадів, радісних моментів та безцінних миттєвостей із близькими.\n\nЗ повагою,\nМаксим Баранов",
+        
         // Onboarding
-       "onboarding.welcome.title": "Ласкаво просимо до Dear Dates",
+        "onboarding.welcome.title": "Ласкаво просимо до Dear Dates",
         "onboarding.welcome.description": "М'який спосіб пам'ятати важливі події та зберігати ідеї подарунків для близьких.",
 
         "onboarding.profiles.title": "Додайте близьких",
@@ -472,6 +482,7 @@ struct LocalizedStrings {
         "button.delete_profile": "Delete Profile",
         "button.delete_gift": "Delete Gift Idea",
         "button.ok": "OK",
+        "button.touchid_authenticate": "Unlock",
         
         // Labels
         "label.name": "Name",
@@ -531,6 +542,10 @@ struct LocalizedStrings {
         "message.no_events_today": "No events today",
         "message.nearest_event": "nearest",
         "message.add_first_event": "Add your first event",
+        
+        // Easter Egg
+        "easteregg.title": "A Little Letter",
+        "easteregg.message": "Hello, my name is Maksym, and I am the creator of Dear Dates.\n\nLike many people, I love giving joy, catching warm emotions, and seeing people happy. But, unfortunately, I don't always remember important dates, even for the people closest to me. That's why the idea came to create an app that helps you not to miss important dates and to record ideas of what can be gifted at the right moment.\n\nI use Dear Dates myself and make it for you the way I would make it for myself. I'm glad you installed it. Even if it has been on your phone for only a short time, I am sincerely grateful — you've shown that my efforts are not in vain.\n\nThere's still a lot more ahead. I wish you warm memories, joyful moments, and priceless times with your loved ones.\n\nSincerely,\nMaksym Baranov",
         
         // Onboarding
        "onboarding.welcome.title": "Welcome to Dear Dates",

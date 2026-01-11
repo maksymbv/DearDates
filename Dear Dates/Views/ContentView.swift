@@ -45,8 +45,15 @@ struct ContentView: View {
             appearance.configureWithOpaqueBackground()
             appearance.stackedLayoutAppearance.normal.titleTextAttributes = [.foregroundColor: UIColor.clear]
             appearance.stackedLayoutAppearance.selected.titleTextAttributes = [.foregroundColor: UIColor.clear]
+            
+            // Убираем верхний бордер (shadow)
+            appearance.shadowColor = .clear
+            
             UITabBar.appearance().standardAppearance = appearance
             UITabBar.appearance().scrollEdgeAppearance = appearance
+            
+            // Для совместимости с iOS 12 и ниже
+            UITabBar.appearance().shadowImage = UIImage()
         }
     }
 }

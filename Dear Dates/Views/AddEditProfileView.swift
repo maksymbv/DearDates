@@ -42,6 +42,15 @@ struct AddEditProfileView: View {
         !allProfiles.isEmpty ? allProfiles : profilesForValidation
     }
     
+    // Цвет для toolbar кнопок: системный в iOS 18+, акцентный в старых версиях
+    private var toolbarButtonColor: Color {
+        if #available(iOS 18.0, *) {
+            return .primary
+        } else {
+            return settingsManager.accentColor.color
+        }
+    }
+    
     var body: some View {
         NavigationView {
             ZStack {

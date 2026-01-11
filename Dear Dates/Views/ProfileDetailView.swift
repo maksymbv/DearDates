@@ -17,6 +17,7 @@ struct ProfileDetailView: View {
     @StateObject private var viewModel = ProfileDetailViewModel()
     
     @Environment(\.modelContext) var modelContext
+    @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var settingsManager: SettingsManager
     @EnvironmentObject var localizationManager: LocalizationManager
@@ -43,7 +44,12 @@ struct ProfileDetailView: View {
     var body: some View {
         Group {
             if let profile = profile {
-                List {
+                ZStack {
+                    // Фон для всего экрана (такой же как в ListView)
+                    (colorScheme == .light ? Color.appBackground : Color(.systemBackground))
+                        .ignoresSafeArea()
+                    
+                    List {
                     ProfileHeaderView(
                         profile: profile,
                         avatarImage: profile.photoPath.flatMap { imageManager.loadImage(from: $0) },
@@ -139,9 +145,11 @@ struct ProfileDetailView: View {
                             onEditGift: { viewModel.showingEditGift = $0 }
                         )
                     }
+                    }
+                    .listStyle(.insetGrouped)
+                    .scrollContentBackground(.hidden)
+                    .contentMargins(.top, 0, for: .scrollContent)
                 }
-                .listStyle(.insetGrouped)
-                .contentMargins(.top, 0, for: .scrollContent)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItemGroup(placement: .navigationBarTrailing) {
@@ -188,6 +196,12 @@ struct ProfileDetailView: View {
                         UIView.animate(withDuration: 0.3) {
                             tabBarController.tabBar.alpha = 1
                         }
+                    }
+                }
+                .onChange(of: allProfiles) { oldValue, newValue in
+                    // Если профиль был удален, закрываем страницу
+                    if !newValue.contains(where: { $0.id == profileId }) {
+                        dismiss()
                     }
                 }
             } else {

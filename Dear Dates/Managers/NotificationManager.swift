@@ -47,28 +47,9 @@ class NotificationManager: ObservableObject {
     }
     
     func scheduleNotifications(for profile: Profile) {
-        // Проверяем глобальное отключение уведомлений
-        guard SettingsManager.shared.notificationsEnabled else {
-            cancelNotifications(for: profile)
-            return
-        }
-        
-        guard profile.notificationsEnabled else {
-            cancelNotifications(for: profile)
-            return
-        }
-        
-        // Проверяем статус разрешений
-        guard authorizationStatus == .authorized else {
-            AppLogger.log("Cannot schedule notifications: authorization status is \(authorizationStatus.rawValue)", level: .warning, category: "NotificationManager")
-            // Не показываем ошибку здесь, так как это может быть нормальной ситуацией
-            // Ошибка уже показана при запросе разрешений
-            return
-        }
-        
-        // Уведомления планируются только для пользовательских событий, если они есть
-        // Эта функция вызывается при создании/обновлении профиля, но события могут быть добавлены позже
+        // Эта функция вызывается при создании/обновлении профиля
         // Уведомления для событий планируются отдельно при создании/обновлении события
+        // Здесь мы ничего не делаем, так как уведомления планируются на уровне событий
     }
     
     func cancelNotifications(for profile: Profile) {
@@ -96,6 +77,130 @@ class NotificationManager: ObservableObject {
     
     func cancelAllNotifications() {
         UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+    }
+    
+    // MARK: - Event Notifications
+    
+    /// Планирует уведомления для события
+    /// Использует NotificationSnapshotManager для сохранения данных (не читает основную БД)
+    func scheduleNotifications(for event: CustomEvent, profileName: String, reminderDays: [Int]) {
+        // Проверяем глобальное отключение уведомлений
+        guard SettingsManager.shared.notificationsEnabled else {
+            cancelNotifications(for: event)
+            return
+        }
+        
+        // Проверяем статус разрешений
+        guard authorizationStatus == .authorized else {
+            AppLogger.log("Cannot schedule notifications: authorization status is \(authorizationStatus.rawValue)", level: .warning, category: "NotificationManager")
+            return
+        }
+        
+        // Проверяем, что событие должно напоминаться
+        guard event.remindAnnually else {
+            cancelNotifications(for: event)
+            return
+        }
+        
+        let eventDate = event.nextDate
+        let calendar = Calendar.current
+        
+        // Планируем уведомления для каждого дня напоминания
+        for reminderDaysValue in reminderDays {
+            // Вычисляем дату уведомления (за N дней до события)
+            guard let notificationDate = calendar.date(byAdding: .day, value: -reminderDaysValue, to: eventDate) else {
+                continue
+            }
+            
+            // Пропускаем уведомления, которые должны были прийти в прошлом
+            if notificationDate < Date() {
+                continue
+            }
+            
+            // Создаем snapshot item для сохранения данных
+            let snapshotItem = NotificationSnapshotItem(
+                eventId: event.id,
+                profileId: event.profileId,
+                eventName: event.name,
+                notificationDate: notificationDate,
+                reminderDays: reminderDaysValue
+            )
+            NotificationSnapshotManager.shared.addItem(snapshotItem)
+            
+            // Создаем уведомление
+            let content = UNMutableNotificationContent()
+            
+            if reminderDaysValue == 0 {
+                // Уведомление на день события
+                content.title = "notification.event.title".localized
+                let bodyFormat = "notification.event.body".localized
+                content.body = String(format: bodyFormat, profileName)
+            } else {
+                // Уведомление-напоминание
+                content.title = "notification.reminder.title".localized
+                let daysText = localizationManager.daysText(reminderDaysValue)
+                let bodyFormat = "notification.reminder.body".localized
+                // Формат: "Через %d %@ событие у %@" или "In %d %@ is %@'s event"
+                // Нужно правильно подставить значения
+                content.body = String(format: bodyFormat, reminderDaysValue, daysText, profileName)
+            }
+            
+            content.sound = .default
+            content.badge = NSNumber(value: 1)
+            
+            // Создаем триггер на нужную дату (9:00 утра по умолчанию)
+            var dateComponents = calendar.dateComponents([.year, .month, .day], from: notificationDate)
+            dateComponents.hour = 9
+            dateComponents.minute = 0
+            
+            let trigger = UNCalendarNotificationTrigger(dateMatching: dateComponents, repeats: false)
+            
+            // Создаем запрос на уведомление
+            let identifier = "event_\(event.id.uuidString)_\(reminderDaysValue)"
+            let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
+            
+            // Планируем уведомление
+            UNUserNotificationCenter.current().add(request) { error in
+                if let error = error {
+                    AppLogger.log("Failed to schedule notification: \(error.localizedDescription)", level: .error, category: "NotificationManager")
+                } else {
+                    AppLogger.log("Notification scheduled for event \(event.id) on \(notificationDate)", level: .info, category: "NotificationManager")
+                }
+            }
+        }
+    }
+    
+    /// Отменяет уведомления для события
+    func cancelNotifications(for event: CustomEvent) {
+        // Удаляем из snapshot
+        NotificationSnapshotManager.shared.removeItems(forEventId: event.id)
+        
+        // Отменяем запланированные уведомления
+        var identifiers: [String] = []
+        
+        // Создаем идентификаторы для всех возможных дней напоминания (на случай, если reminderDays изменились)
+        for days in 0...365 {
+            identifiers.append("event_\(event.id.uuidString)_\(days)")
+        }
+        
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiers)
+    }
+    
+    /// Отменяет все уведомления для профиля
+    func cancelNotificationsForProfile(profileId: UUID) {
+        // Удаляем из snapshot
+        NotificationSnapshotManager.shared.removeItems(forProfileId: profileId)
+        
+        // Отменяем все уведомления для этого профиля
+        UNUserNotificationCenter.current().getPendingNotificationRequests { requests in
+            let identifiers = requests
+                .filter { $0.identifier.contains(profileId.uuidString) }
+                .map { $0.identifier }
+            
+            if !identifiers.isEmpty {
+                UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiers)
+            }
+        }
     }
     
 }

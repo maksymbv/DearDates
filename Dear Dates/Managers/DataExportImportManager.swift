@@ -20,7 +20,7 @@ struct ExportData: Codable {
         self.gifts = gifts.map { $0.toCodable() }
         self.userProfile = userProfile.toCodable()
         self.exportDate = Date()
-        self.appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        self.appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.1"
     }
 }
 

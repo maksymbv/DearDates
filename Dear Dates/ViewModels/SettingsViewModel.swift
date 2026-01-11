@@ -17,6 +17,7 @@ class SettingsViewModel: ObservableObject {
     @Published var showingUserProfile = false
     @Published var showingExportSheet = false
     @Published var showingImportPicker = false
+    @Published var showingEasterEgg = false
     @Published var exportFileURL: URL?
     
     private let dataManager: DataManager
@@ -91,7 +92,7 @@ class SettingsViewModel: ObservableObject {
         if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
             return version
         }
-        return "1.0.0"
+        return "1.1"
     }
     
     func getEmailTemplate() -> String {

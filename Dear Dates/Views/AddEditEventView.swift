@@ -9,13 +9,20 @@ import SwiftUI
 import SwiftData
 
 struct AddEditEventView: View {
+    @Query private var allProfiles: [Profile]
+    
     @Environment(\.dismiss) var dismiss
     @Environment(\.modelContext) var modelContext
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var localizationManager: LocalizationManager
+    @EnvironmentObject var notificationManager: NotificationManager
     
     let profileId: UUID
     var event: CustomEvent?
+    
+    private var profile: Profile? {
+        allProfiles.first { $0.id == profileId }
+    }
     
     @State private var eventName: String = ""
     @State private var selectedMonth: Int = Calendar.current.component(.month, from: Date())
@@ -196,16 +203,27 @@ struct AddEditEventView: View {
         let trimmedName = eventName.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else { return }
         
+        guard let profile = profile else {
+            AppLogger.log("Profile not found for profileId: \(profileId)", level: .error, category: "AddEditEventView")
+            return
+        }
+        
         // Используем выбранные месяц и день напрямую
         let month = selectedMonth
         let day = min(selectedDay, validDays.count) // Убеждаемся, что день валиден
         
+        let eventToSave: CustomEvent
+        
         if let existingEvent = event {
+            // Отменяем старые уведомления
+            notificationManager.cancelNotifications(for: existingEvent)
+            
             existingEvent.name = trimmedName
             existingEvent.month = month
             existingEvent.day = day
             existingEvent.remindAnnually = remindAnnually
             existingEvent.updatedAt = Date()
+            eventToSave = existingEvent
         } else {
             let newEvent = CustomEvent(
                 profileId: profileId,
@@ -215,10 +233,21 @@ struct AddEditEventView: View {
                 remindAnnually: remindAnnually
             )
             modelContext.insert(newEvent)
+            eventToSave = newEvent
         }
         
         do {
             try modelContext.save()
+            
+            // Планируем уведомления (используем snapshot, не читаем основную БД)
+            if profile.notificationsEnabled && eventToSave.remindAnnually {
+                notificationManager.scheduleNotifications(
+                    for: eventToSave,
+                    profileName: profile.name,
+                    reminderDays: profile.reminderDays
+                )
+            }
+            
             dismiss()
         } catch {
             AppLogger.log("Error saving event: \(error.localizedDescription)", level: .error, category: "AddEditEventView")
@@ -228,6 +257,9 @@ struct AddEditEventView: View {
     
     private func deleteEvent() {
         guard let event = event else { return }
+        
+        // Отменяем уведомления перед удалением
+        notificationManager.cancelNotifications(for: event)
         
         modelContext.delete(event)
         

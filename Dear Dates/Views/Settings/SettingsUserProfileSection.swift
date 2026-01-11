@@ -22,7 +22,7 @@ struct SettingsUserProfileSection: View {
     var body: some View {
         Section {
             Button(action: onTap) {
-                HStack(spacing: 16) {
+                HStack(spacing: 12) {
                     // Аватарка
                     let userProfile = userProfiles.first ?? UserProfile()
                     let userImage = userProfile.photoPath.flatMap { imageManager.loadImage(from: $0) }
@@ -46,47 +46,50 @@ struct SettingsUserProfileSection: View {
                             .accessibilityHidden(true)
                     }
                     
-                    VStack(alignment: .leading, spacing: 6) {
-                        // Имя пользователя
-                        Text(userProfile.name.isEmpty ? "navigation.user_profile".localized : userProfile.name)
-                            .font(.headline)
-                            .foregroundColor(.primary)
-                            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-                        
-                        // Статистика
-                        HStack(spacing: 20) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "person.2.fill")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                    .accessibilityHidden(true)
-                                Text("\(allProfiles.count)")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-                            }
+                    HStack(spacing: 0) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            // Имя пользователя
+                            Text(userProfile.name.isEmpty ? "navigation.user_profile".localized : userProfile.name)
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                             
-                            HStack(spacing: 4) {
-                                Image(systemName: "gift.fill")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                    .accessibilityHidden(true)
-                                Text("\(allGifts.filter { !$0.isGiven }.count)")
-                                    .font(.subheadline)
-                                    .foregroundColor(.secondary)
-                                    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                            // Статистика
+                            HStack(spacing: 20) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "person.2.fill")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .accessibilityHidden(true)
+                                    Text("\(allProfiles.count)")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                                }
+                                
+                                HStack(spacing: 4) {
+                                    Image(systemName: "gift.fill")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .accessibilityHidden(true)
+                                    Text("\(allGifts.filter { !$0.isGiven }.count)")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                                }
                             }
                         }
+                        
+                        Spacer(minLength: 0)
+                        
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .accessibilityHidden(true)
+                            .frame(maxHeight: .infinity, alignment: .center)
                     }
-                    
-                    Spacer()
-                    
-                    Image(systemName: "chevron.right")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .accessibilityHidden(true)
                 }
-                .padding(.vertical, 12)
+                .contentShape(Rectangle())
             }
             .buttonStyle(PlainButtonStyle())
             .accessibilityLabel("accessibility.user_profile_button".localized + ". " + String(format: "accessibility.user_profile_stats".localized, allProfiles.count, allGifts.filter { !$0.isGiven }.count))

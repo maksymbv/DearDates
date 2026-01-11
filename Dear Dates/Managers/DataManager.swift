@@ -96,10 +96,9 @@ class DataManager: ObservableObject {
     func deleteProfile(_ profile: Profile, notificationManager: NotificationManager, context: ModelContext) {
         // Сохраняем данные профиля ДО удаления, чтобы избежать ошибок SwiftData
         let profileId = profile.id
-        let reminderDays = profile.reminderDays
         
-        // Отменяем уведомления ДО удаления профиля из контекста
-        notificationManager.cancelNotifications(profileId: profileId, reminderDays: reminderDays)
+        // Отменяем уведомления ДО удаления профиля из контекста (используем новый метод)
+        notificationManager.cancelNotificationsForProfile(profileId: profileId)
         
         // Удаляем профиль из контекста
         context.delete(profile)

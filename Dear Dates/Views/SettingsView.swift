@@ -41,13 +41,21 @@ struct SettingsView: View {
                         onRequestFeature: { viewModel.openFeatureRequest() }
                     )
                     
-                    SettingsAboutSection(appVersion: viewModel.getAppVersion())
+                    SettingsAboutSection(
+                        appVersion: viewModel.getAppVersion(),
+                        onVersionLongPress: {
+                            viewModel.showingEasterEgg = true
+                        }
+                    )
                 }
                 .scrollContentBackground(.hidden)
             }
             .navigationTitle("navigation.settings".localized)
             .fullScreenCover(isPresented: $viewModel.showingUserProfile) {
                 UserProfileView()
+            }
+            .fullScreenCover(isPresented: $viewModel.showingEasterEgg) {
+                EasterEggView()
             }
             .sheet(isPresented: $viewModel.showingSupportEmail) {
                 MailView(
