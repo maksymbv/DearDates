@@ -15,7 +15,7 @@ struct EasterEggView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                (colorScheme == .light ? Color.appBackground : Color(.systemBackground))
+                Color(.systemBackground)
                     .ignoresSafeArea()
                 
                 ScrollView {

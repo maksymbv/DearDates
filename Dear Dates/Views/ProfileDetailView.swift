@@ -46,7 +46,7 @@ struct ProfileDetailView: View {
             if let profile = profile {
                 ZStack {
                     // Фон для всего экрана (такой же как в ListView)
-                    (colorScheme == .light ? Color.appBackground : Color(.systemBackground))
+                    Color(.systemGroupedBackground)
                         .ignoresSafeArea()
                     
                     List {
@@ -116,6 +116,8 @@ struct ProfileDetailView: View {
                     if !profile.notes.isEmpty {
                         Section {
                             ProfileNotesSection(notes: profile.notes)
+                                .listRowBackground(Color.clear)
+                                .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16))
                         } header: {
                             Text("label.notes".localized)
                         }
@@ -205,8 +207,11 @@ struct ProfileDetailView: View {
                     }
                 }
             } else {
-                Text("message.profile_not_found".localized)
-                    .foregroundColor(.secondary)
+                // Если профиль не найден, сразу закрываем экран
+                Color.clear
+                    .onAppear {
+                        dismiss()
+                    }
             }
         }
     }

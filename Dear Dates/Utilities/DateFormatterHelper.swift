@@ -26,6 +26,7 @@ struct DateFormatterHelper {
             let formatter = DateFormatter()
             formatter.dateFormat = "d MMMM"
             formatter.locale = locale
+            formatter.timeZone = TimeZone.current // Используем системный часовой пояс
             formatterCache[cacheKey] = formatter
             return formatter.string(from: date)
         }
@@ -45,6 +46,7 @@ struct DateFormatterHelper {
             let formatter = DateFormatter()
             formatter.dateStyle = .long
             formatter.locale = locale
+            formatter.timeZone = TimeZone.current // Используем системный часовой пояс
             formatterCache[cacheKey] = formatter
             return formatter.string(from: date)
         }

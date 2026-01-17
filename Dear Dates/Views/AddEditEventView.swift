@@ -16,6 +16,7 @@ struct AddEditEventView: View {
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var localizationManager: LocalizationManager
     @EnvironmentObject var notificationManager: NotificationManager
+    @EnvironmentObject var settingsManager: SettingsManager
     
     let profileId: UUID
     var event: CustomEvent?
@@ -54,54 +55,60 @@ struct AddEditEventView: View {
     
     var body: some View {
         NavigationView {
-            Form {
-                Section(header: Text("label.event_name".localized)) {
-                    TextField("label.event_name_placeholder".localized, text: Binding(
-                        get: { eventName },
-                        set: { newValue in
-                            if newValue.count <= AppConstants.TextLimits.maxEventNameLength {
-                                eventName = newValue
+            ZStack {
+                Color(.systemGroupedBackground)
+                    .ignoresSafeArea()
+                
+                Form {
+                    Section(header: Text("label.event_name".localized)) {
+                        TextField("label.event_name_placeholder".localized, text: Binding(
+                            get: { eventName },
+                            set: { newValue in
+                                if newValue.count <= AppConstants.TextLimits.maxEventNameLength {
+                                    eventName = newValue
+                                }
                             }
-                        }
-                    ))
-                    .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-                }
-                
-                Section(header: Text("label.event_date".localized)) {
-                    Button(action: {
-                        showingDatePicker = true
-                    }) {
-                        HStack {
-                            Text("\(selectedDay) \(monthName(selectedMonth))")
-                                .foregroundColor(.primary)
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                }
-                
-                Section {
-                    Toggle("label.remind_annually".localized, isOn: $remindAnnually)
+                        ))
                         .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-                }
-                
-                // Кнопка удаления (только для редактирования существующего события)
-                if event != nil {
-                    Section {
-                        Button(role: .destructive, action: {
-                            showingDeleteAlert = true
+                    }
+                    
+                    Section(header: Text("label.event_date".localized)) {
+                        Button(action: {
+                            showingDatePicker = true
                         }) {
                             HStack {
+                                Text("\(selectedDay) \(monthName(selectedMonth))")
+                                    .foregroundColor(.primary)
                                 Spacer()
-                                Text("button.delete".localized)
-                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
                             }
                         }
-                        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                    }
+                    
+                    Section {
+                        Toggle("label.remind_annually".localized, isOn: $remindAnnually)
+                            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                    }
+                    
+                    // Кнопка удаления (только для редактирования существующего события)
+                    if event != nil {
+                        Section {
+                            Button(role: .destructive, action: {
+                                showingDeleteAlert = true
+                            }) {
+                                HStack {
+                                    Spacer()
+                                    Text("button.delete".localized)
+                                    Spacer()
+                                }
+                            }
+                            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                        }
                     }
                 }
+                .scrollContentBackground(.hidden)
             }
             .navigationTitle(event == nil ? "button.add_event".localized : "button.edit".localized)
             .navigationBarTitleDisplayMode(.inline)
@@ -135,6 +142,7 @@ struct AddEditEventView: View {
                 datePickerSheet
                     .presentationDetents([.height(250)])
             }
+            .tint(settingsManager.accentColor.color)
         }
     }
     

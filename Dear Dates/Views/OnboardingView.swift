@@ -40,7 +40,7 @@ struct OnboardingView: View {
     var body: some View {
         ZStack {
             // Фон
-            (colorScheme == .light ? Color.appBackground : Color(.systemBackground))
+            Color(.systemBackground)
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {

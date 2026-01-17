@@ -92,18 +92,16 @@ class SettingsViewModel: ObservableObject {
         if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
             return version
         }
-        return "1.1"
+        return "1.2"
     }
     
     func getEmailTemplate() -> String {
         let appVersion = getAppVersion()
         let iosVersion = UIDevice.current.systemVersion
-        let deviceModel = UIDevice.current.model
         
         return """
         Application Name: Dear Dates
         iOS: \(iosVersion)
-        Device Model: \(deviceModel)
         App Version: \(appVersion)
         --------------------------------------
         

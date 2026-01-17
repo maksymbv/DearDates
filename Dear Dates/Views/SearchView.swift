@@ -17,14 +17,28 @@ struct SearchView: View {
     @Environment(\.colorScheme) var colorScheme
     @State private var searchText = ""
     
-    var filteredProfiles: [Profile] {
+    // Профили, найденные по заметкам (приоритет - если найден по заметкам, то в эту секцию)
+    var filteredProfilesByNotes: [Profile] {
         if searchText.isEmpty {
             return []
         } else {
             let searchLower = searchText.lowercased()
             return allProfiles.filter { profile in
-                profile.name.lowercased().contains(searchLower) ||
-                (!profile.notes.isEmpty && profile.notes.lowercased().contains(searchLower))
+                !profile.notes.isEmpty && profile.notes.lowercased().contains(searchLower)
+            }
+        }
+    }
+    
+    // Профили, найденные только по имени (не по заметкам)
+    var filteredProfilesByName: [Profile] {
+        if searchText.isEmpty {
+            return []
+        } else {
+            let searchLower = searchText.lowercased()
+            let notesProfileIds = Set(filteredProfilesByNotes.map { $0.id })
+            return allProfiles.filter { profile in
+                profile.name.lowercased().contains(searchLower) &&
+                !notesProfileIds.contains(profile.id)
             }
         }
     }
@@ -41,8 +55,8 @@ struct SearchView: View {
                    (!gift.notes.isEmpty && gift.notes.lowercased().contains(searchLower)) {
                     if let profile = allProfiles.first(where: { $0.id == gift.profileId }) {
                         results.append((gift: gift, profile: profile))
-            }
-        }
+                    }
+                }
             }
             
             return results
@@ -50,14 +64,13 @@ struct SearchView: View {
     }
     
     var hasResults: Bool {
-        !filteredProfiles.isEmpty || !filteredGiftIdeas.isEmpty
+        !filteredProfilesByName.isEmpty || !filteredProfilesByNotes.isEmpty || !filteredGiftIdeas.isEmpty
     }
     
     var body: some View {
         NavigationView {
             ZStack {
-                Color.clear
-                    .appBackground(colorScheme: colorScheme)
+                Color(.systemGroupedBackground)
                     .ignoresSafeArea()
                 
                 SwiftUI.Group {
@@ -80,26 +93,46 @@ struct SearchView: View {
                     } else {
                         ScrollView {
                             LazyVStack(spacing: 20) {
-                                // Профили
-                                if !filteredProfiles.isEmpty {
+                                // Профили, найденные по имени
+                                if !filteredProfilesByName.isEmpty {
                                     VStack(alignment: .leading, spacing: 12) {
                                         Text("label.profiles".localized)
                                             .font(.headline)
                                             .padding(.horizontal)
                                         
-                                ForEach(filteredProfiles, id: \.id) { profile in
-                                    NavigationLink(destination: ProfileDetailView(profileId: profile.id)) {
-                                        ProfileRowView(
-                                            profile: profile,
-                                            locale: localizationManager.currentLanguage.locale,
-                                            searchText: searchText
-                                        )
-                                        .id("\(profile.id.uuidString)_\(searchText)")
-                                    }
-                                    .buttonStyle(PlainButtonStyle())
+                                        ForEach(filteredProfilesByName, id: \.id) { profile in
+                                            NavigationLink(destination: ProfileDetailView(profileId: profile.id)) {
+                                                ProfileRowView(
+                                                    profile: profile,
+                                                    locale: localizationManager.currentLanguage.locale,
+                                                    searchText: searchText
+                                                )
+                                                .id("\(profile.id.uuidString)_\(searchText)")
+                                            }
+                                            .buttonStyle(PlainButtonStyle())
                                             .padding(.horizontal)
+                                        }
+                                    }
                                 }
-                            }
+                                
+                                // Профили, найденные по заметкам
+                                if !filteredProfilesByNotes.isEmpty {
+                                    VStack(alignment: .leading, spacing: 12) {
+                                        Text("label.notes".localized)
+                                            .font(.headline)
+                                            .padding(.horizontal)
+                                        
+                                        ForEach(filteredProfilesByNotes, id: \.id) { profile in
+                                            NavigationLink(destination: ProfileDetailView(profileId: profile.id)) {
+                                                ProfileNotesSearchRow(
+                                                    profile: profile,
+                                                    searchText: searchText
+                                                )
+                                            }
+                                            .buttonStyle(PlainButtonStyle())
+                                            .padding(.horizontal)
+                                        }
+                                    }
                                 }
                                 
                                 // Идеи подарков

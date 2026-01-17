@@ -90,7 +90,8 @@ struct ProfileRowView: View {
                 image: avatarImage,
                 name: profile.name,
                 avatarColorHue: profile.avatarColorHue,
-                size: 60
+                size: AdaptiveSize.size(baseSize: AppConstants.UI.baseAvatarSize),
+                maxFontSize: 32 // Меньший размер буквы для карточки профиля
             )
     }
             

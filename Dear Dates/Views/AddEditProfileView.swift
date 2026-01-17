@@ -54,8 +54,7 @@ struct AddEditProfileView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color.clear
-                    .appBackground(colorScheme: colorScheme)
+                Color(.systemGroupedBackground)
                     .ignoresSafeArea()
                 
                 Form {
@@ -100,6 +99,7 @@ struct AddEditProfileView: View {
                 // Сохраняем профили в @State для использования в ViewModel
                 updateProfilesForValidation()
             }
+            .tint(settingsManager.accentColor.color)
         }
     }
     

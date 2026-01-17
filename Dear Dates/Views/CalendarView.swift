@@ -106,7 +106,8 @@ struct CalendarView: View {
                         locale: localizationManager.currentLanguage.locale
                     )
                     .id(allEvents.count) // Принудительное обновление при изменении количества событий
-                    .frame(height: 400)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: AdaptiveSize.size(baseSize: AppConstants.UI.baseCalendarHeight))
                     .padding(.vertical)
                     .padding(.top, 8)
                     
@@ -119,32 +120,33 @@ struct CalendarView: View {
                     
                     // Профили выбранного дня (показываем только если есть дни рождения)
                     if selectedDate != nil && !selectedDayProfiles.isEmpty {
-                        VStack(alignment: .leading, spacing: 12) {
-                                Text(selectedDayString)
-                                    .font(.headline)
-                                    .padding(.horizontal)
-                                    .padding(.top, 24)
-                                
-                                LazyVStack(spacing: 12) {
-                                    ForEach(selectedDayProfiles) { profile in
-                                        NavigationLink(destination: ProfileDetailView(profileId: profile.id)) {
-                                            ProfileRowView(
-                                                profile: profile,
-                                                locale: localizationManager.currentLanguage.locale
-                                            )
-                                            .transition(.opacity.combined(with: .move(edge: .top)))
-                                        }
-                                        .buttonStyle(PlainButtonStyle())
+                        List {
+                            Section(header: Text(selectedDayString)
+                                .font(.headline)
+                                .textCase(nil)) {
+                                ForEach(selectedDayProfiles) { profile in
+                                    NavigationLink(destination: ProfileDetailView(profileId: profile.id)) {
+                                        ProfileRowView(
+                                            profile: profile,
+                                            locale: localizationManager.currentLanguage.locale
+                                        )
+                                        .transition(.opacity.combined(with: .move(edge: .top)))
                                     }
+                                    .buttonStyle(PlainButtonStyle())
                                 }
-                                .padding(.horizontal)
-                            .animation(.easeInOut(duration: AppConstants.UI.animationDuration), value: selectedDate)
+                            }
                         }
+                        .listStyle(.insetGrouped)
+                        .scrollContentBackground(.hidden)
+                        .scrollDisabled(true)
+                        .frame(height: CGFloat(selectedDayProfiles.count * 80 + 100))
+                        .animation(.easeInOut(duration: AppConstants.UI.animationDuration), value: selectedDate)
+                        .padding(.top, 16)
                     }
                 }
             }
             .navigationTitle("navigation.calendar".localized)
-            .appBackground(colorScheme: colorScheme)
+            .background(Color(.systemGroupedBackground))
             .onAppear {
                 // При появлении View проверяем, нужно ли выбрать сегодня
                 // Если ничего не выбрано, проверяем есть ли события сегодня
@@ -235,6 +237,9 @@ struct iOSCalendarView: UIViewRepresentable {
         // Устанавливаем видимую дату
         calendarView.visibleDateComponents = calendar.dateComponents([.year, .month], from: visibleDate)
         
+        // Настраиваем constraints для ограничения ширины
+        calendarView.translatesAutoresizingMaskIntoConstraints = false
+        
         return calendarView
     }
     
@@ -245,6 +250,12 @@ struct iOSCalendarView: UIViewRepresentable {
         
         // Всегда задаем visibleDateComponents из visibleDate
         uiView.visibleDateComponents = currentVisibleComponents
+        
+        // Убеждаемся, что календарь не выходит за границы
+        if uiView.superview != nil {
+            uiView.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+            uiView.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        }
         
         // Обновляем выбранную дату в календаре
         if let selectionBehavior = uiView.selectionBehavior as? UICalendarSelectionSingleDate {

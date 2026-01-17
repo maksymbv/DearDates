@@ -12,13 +12,25 @@ struct AvatarView: View {
     let name: String
     let avatarColorHue: Double
     let size: CGFloat
+    let maxFontSize: CGFloat? // Опциональный максимальный размер шрифта буквы
     @Environment(\.colorScheme) var colorScheme
     
-    init(image: UIImage?, name: String, avatarColorHue: Double, size: CGFloat = 60) {
+    init(image: UIImage?, name: String, avatarColorHue: Double, size: CGFloat = 60, maxFontSize: CGFloat? = nil) {
         self.image = image
         self.name = name
         self.avatarColorHue = avatarColorHue
         self.size = size
+        self.maxFontSize = maxFontSize
+    }
+    
+    // Вычисляем размер шрифта буквы с ограничением для больших экранов
+    private var avatarFontSize: Font {
+        let baseFontSize: CGFloat = size > 60 ? size * 0.83 : 22 // .title2 примерно 22pt
+        // Используем переданный maxFontSize или значение по умолчанию
+        let defaultMaxFontSize: CGFloat = 40
+        let finalMaxFontSize = maxFontSize ?? defaultMaxFontSize
+        let finalSize = min(baseFontSize, finalMaxFontSize)
+        return .system(size: finalSize)
     }
     
     var body: some View {
@@ -37,7 +49,7 @@ struct AvatarView: View {
                     .frame(width: size, height: size)
                     .overlay(
                         Text(name.prefix(1).uppercased())
-                            .font(size > 60 ? .system(size: 50) : .title2)
+                            .font(avatarFontSize)
                             .fontWeight(.semibold)
                             .foregroundColor(.white)
                     )

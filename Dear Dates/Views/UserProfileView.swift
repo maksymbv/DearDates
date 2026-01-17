@@ -42,8 +42,7 @@ struct UserProfileView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color.clear
-                    .appBackground(colorScheme: colorScheme)
+                Color(.systemGroupedBackground)
                     .ignoresSafeArea()
                 
                 Form {

@@ -26,7 +26,8 @@ struct ProfileHeaderView: View {
                 image: avatarImage,
                 name: profile.name,
                 avatarColorHue: profile.avatarColorHue,
-                size: 200
+                size: 200,
+                maxFontSize: 80 // Больший размер буквы для страницы профиля
             )
             
             // Имя под фото

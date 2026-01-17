@@ -20,8 +20,7 @@ struct SettingsView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                Color.clear
-                    .appBackground(colorScheme: colorScheme)
+                Color(.systemGroupedBackground)
                     .ignoresSafeArea()
                 
                 List {
@@ -94,8 +93,7 @@ struct ThemeSettingsView: View {
     
     var body: some View {
         ZStack {
-            Color.clear
-                .appBackground(colorScheme: colorScheme)
+            Color(.systemBackground)
                 .ignoresSafeArea()
             
             Form {
@@ -183,8 +181,7 @@ struct NotificationsSettingsView: View {
     
     var body: some View {
         ZStack {
-            Color.clear
-                .appBackground(colorScheme: colorScheme)
+            Color(.systemBackground)
                 .ignoresSafeArea()
             
             Form {

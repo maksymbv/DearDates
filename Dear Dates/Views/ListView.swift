@@ -74,7 +74,7 @@ struct ListView: View {
         NavigationStack {
             ZStack {
                 // Фон для всего экрана
-                (colorScheme == .light ? Color.appBackground : Color(.systemBackground))
+                Color(.systemGroupedBackground)
                     .ignoresSafeArea()
                 
                 if filteredProfiles.isEmpty {

@@ -6,8 +6,10 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct GiftIdeaSearchRow: View {
+    @Query private var allEvents: [CustomEvent]
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var settingsManager: SettingsManager
     let gift: Gift
@@ -22,6 +24,11 @@ struct GiftIdeaSearchRow: View {
     
     private var accentColor: Color {
         settingsManager.accentColor.color
+    }
+    
+    private var event: CustomEvent? {
+        guard let eventId = gift.eventId else { return nil }
+        return allEvents.first { $0.id == eventId }
     }
     
     var body: some View {
@@ -47,13 +54,25 @@ struct GiftIdeaSearchRow: View {
                     .truncationMode(.tail)
                 }
                 
-                HighlightedText(
-                    profile.name,
-                    searchText: searchText ?? "",
-                    highlightColor: accentColor
-                )
-                .font(.caption2)
-                .foregroundColor(.secondary)
+                HStack(spacing: 8) {
+                    HighlightedText(
+                        profile.name,
+                        searchText: searchText ?? "",
+                        highlightColor: accentColor
+                    )
+                    .font(.subheadline) // Увеличен с .caption2 до .subheadline
+                    .foregroundColor(.secondary)
+                    
+                    if let event = event {
+                        Text(event.name)
+                            .font(.caption)
+                            .foregroundColor(accentColor)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(accentColor.opacity(0.15))
+                            .cornerRadius(8)
+                    }
+                }
                 .padding(.top, 2)
             }
             

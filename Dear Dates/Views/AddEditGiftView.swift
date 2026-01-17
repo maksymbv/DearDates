@@ -54,7 +54,7 @@ struct AddEditGiftView: View {
         NavigationView {
             ZStack {
                 // Адаптивный фон
-                (colorScheme == .light ? Color.white : Color(.systemBackground))
+                Color(.systemGroupedBackground)
                     .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
@@ -151,6 +151,7 @@ struct AddEditGiftView: View {
                     Text("message.delete_gift_description".localized)
                 }
             }
+            .tint(settingsManager.accentColor.color)
         }
     }
     
@@ -191,62 +192,60 @@ struct AddEditGiftView: View {
     // MARK: - Event Selection Footer
     
     private var eventSelectionFooter: some View {
-        VStack(spacing: 0) {
-            Divider()
+        HStack {
+            Text("section.add_to_event".localized)
+                .font(.subheadline)
+                .foregroundColor(.secondary)
             
-            HStack {
-                Text("section.add_to_event".localized)
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+            Spacer()
+            
+            Menu {
+                Button(action: {
+                    selectedEventId = nil
+                }) {
+                    HStack {
+                        Text("label.not_selected".localized)
+                        if selectedEventId == nil {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
                 
-                Spacer()
-                
-                Menu {
+                ForEach(profileEvents, id: \.id) { event in
                     Button(action: {
-                        selectedEventId = nil
+                        selectedEventId = event.id
                     }) {
                         HStack {
-                            Text("label.not_selected".localized)
-                            if selectedEventId == nil {
+                            Text(event.name)
+                            if selectedEventId == event.id {
                                 Image(systemName: "checkmark")
                             }
                         }
                     }
-                    
-                    ForEach(profileEvents, id: \.id) { event in
-                        Button(action: {
-                            selectedEventId = event.id
-                        }) {
-                            HStack {
-                                Text(event.name)
-                                if selectedEventId == event.id {
-                                    Image(systemName: "checkmark")
-                                }
-                            }
-                        }
-                    }
-                } label: {
-                    HStack(spacing: 4) {
-                        if let selectedEventId = selectedEventId,
-                           let selectedEvent = profileEvents.first(where: { $0.id == selectedEventId }) {
-                            Text(selectedEvent.name)
-                                .font(.body)
-                                .foregroundColor(settingsManager.accentColor.color)
-                        } else {
-                            Text("label.not_selected".localized)
-                                .font(.body)
-                                .foregroundColor(settingsManager.accentColor.color)
-                        }
-                        Image(systemName: "chevron.up.chevron.down")
-                            .font(.caption)
+                }
+            } label: {
+                HStack(spacing: 4) {
+                    if let selectedEventId = selectedEventId,
+                       let selectedEvent = profileEvents.first(where: { $0.id == selectedEventId }) {
+                        Text(selectedEvent.name)
+                            .font(.body)
+                            .foregroundColor(settingsManager.accentColor.color)
+                    } else {
+                        Text("label.not_selected".localized)
+                            .font(.body)
                             .foregroundColor(settingsManager.accentColor.color)
                     }
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.caption)
+                        .foregroundColor(settingsManager.accentColor.color)
                 }
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(colorScheme == .light ? Color.white : Color(.secondarySystemBackground))
         }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(
+            Color(.systemBackground)
+        )
     }
 }
 

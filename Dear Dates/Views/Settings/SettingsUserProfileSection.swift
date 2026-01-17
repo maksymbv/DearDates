@@ -27,20 +27,22 @@ struct SettingsUserProfileSection: View {
                     let userProfile = userProfiles.first ?? UserProfile()
                     let userImage = userProfile.photoPath.flatMap { imageManager.loadImage(from: $0) }
                     
+                    let avatarSize = AdaptiveSize.size(baseSize: AppConstants.UI.baseAvatarSize)
+                    
                     if let image = userImage {
                         Image(uiImage: image)
                             .resizable()
                             .scaledToFill()
-                            .frame(width: 60, height: 60)
+                            .frame(width: avatarSize, height: avatarSize)
                             .clipShape(Circle())
                             .accessibilityHidden(true)
                     } else {
                         Circle()
                             .fill(settingsManager.accentColor.color.opacity(0.2))
-                            .frame(width: 60, height: 60)
+                            .frame(width: avatarSize, height: avatarSize)
                             .overlay(
                                 Image(systemName: "person.fill")
-                                    .font(.system(size: 30))
+                                    .font(.system(size: avatarSize * 0.5))
                                     .foregroundColor(settingsManager.accentColor.color)
                             )
                             .accessibilityHidden(true)

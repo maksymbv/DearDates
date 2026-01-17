@@ -11,7 +11,7 @@ extension View {
     /// Применяет стандартный фон приложения в зависимости от цветовой схемы
     func appBackground(colorScheme: ColorScheme) -> some View {
         self.background(
-            colorScheme == .light ? Color.appBackground : Color(.systemBackground)
+            Color(.systemBackground)
         )
     }
 }
