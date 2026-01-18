@@ -106,8 +106,8 @@ struct CalendarView: View {
                         locale: localizationManager.currentLanguage.locale
                     )
                     .id(allEvents.count) // Принудительное обновление при изменении количества событий
-                    .frame(maxWidth: .infinity)
                     .frame(height: AdaptiveSize.size(baseSize: AppConstants.UI.baseCalendarHeight))
+                    .padding(.horizontal)
                     .padding(.vertical)
                     .padding(.top, 8)
                     

@@ -73,25 +73,18 @@ struct ProfileDetailView: View {
                                     viewModel.showingEditEvent = event
                                 }) {
                                     HStack {
-                                        HStack(spacing: 4) {
-                                            Text(event.name)
-                                                .font(.body)
-                                                .fontWeight(.medium)
-                                                .foregroundColor(.primary)
-                                                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-                                            Text("·")
-                                                .font(.body)
-                                                .foregroundColor(.primary)
-                                                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-                                            Text(DateFormatterHelper.formatEventDate(event.nextDate, locale: localizationManager.currentLanguage.locale))
-                                                .font(.body)
-                                                .foregroundColor(.primary)
-                                                .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-                                        }
+                                        Text(event.name)
+                                            .font(.body)
+                                            .fontWeight(.medium)
+                                            .foregroundColor(.primary)
+                                            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+                                        
                                         Spacer()
-                                        Image(systemName: "chevron.right")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
+                                        
+                                        Text(DateFormatterHelper.formatEventDate(event.nextDate, locale: localizationManager.currentLanguage.locale))
+                                            .font(.body)
+                                            .foregroundColor(.primary)
+                                            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
                                     }
                                 }
                             }
