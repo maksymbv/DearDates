@@ -24,9 +24,7 @@ struct SettingsView: View {
                     .ignoresSafeArea()
                 
                 List {
-                    SettingsUserProfileSection {
-                        viewModel.showingUserProfile = true
-                    }
+                    SettingsUserProfileSection()
                     
                     SettingsMainSection()
                     
@@ -50,9 +48,6 @@ struct SettingsView: View {
                 .scrollContentBackground(.hidden)
             }
             .navigationTitle("navigation.settings".localized)
-            .fullScreenCover(isPresented: $viewModel.showingUserProfile) {
-                UserProfileView()
-            }
             .fullScreenCover(isPresented: $viewModel.showingEasterEgg) {
                 EasterEggView()
             }
@@ -152,17 +147,62 @@ struct ThemeSettingsView: View {
                     .foregroundColor(.primary)
                     
                     Button(action: { settingsManager.accentColor = .blue }) {
-                            HStack {
-                                Circle()
+                        HStack {
+                            Circle()
                                 .fill(Color.blue)
-                                    .frame(width: 20, height: 20)
+                                .frame(width: 20, height: 20)
                             Text("label.color_blue".localized)
                             Spacer()
                             if settingsManager.accentColor == .blue {
                                 Image(systemName: "checkmark")
                                     .foregroundColor(.blue)
+                            }
                         }
                     }
+                    .foregroundColor(.primary)
+                    
+                    Button(action: { settingsManager.accentColor = .green }) {
+                        HStack {
+                            Circle()
+                                .fill(Color(red: 0.4, green: 0.7, blue: 0.5))
+                                .frame(width: 20, height: 20)
+                            Text("label.color_green".localized)
+                            Spacer()
+                            if settingsManager.accentColor == .green {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(Color(red: 0.4, green: 0.7, blue: 0.5))
+                            }
+                        }
+                    }
+                    .foregroundColor(.primary)
+                    
+                    Button(action: { settingsManager.accentColor = .yellow }) {
+                        HStack {
+                            Circle()
+                                .fill(Color(red: 1.0, green: 0.85, blue: 0.4))
+                                .frame(width: 20, height: 20)
+                            Text("label.color_yellow".localized)
+                            Spacer()
+                            if settingsManager.accentColor == .yellow {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(Color(red: 1.0, green: 0.85, blue: 0.4))
+                            }
+                        }
+                    }
+                    .foregroundColor(.primary)
+                    
+                    Button(action: { settingsManager.accentColor = .purple }) {
+                        HStack {
+                            Circle()
+                                .fill(Color(red: 0.7, green: 0.5, blue: 0.9))
+                                .frame(width: 20, height: 20)
+                            Text("label.color_purple".localized)
+                            Spacer()
+                            if settingsManager.accentColor == .purple {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(Color(red: 0.7, green: 0.5, blue: 0.9))
+                            }
+                        }
                     }
                     .foregroundColor(.primary)
                 }

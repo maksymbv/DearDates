@@ -33,6 +33,16 @@ struct AvatarView: View {
         return .system(size: finalSize)
     }
     
+    // Безопасный hue: проверяем на NaN и бесконечность
+    private var safeHue: Double {
+        if avatarColorHue.isNaN || !avatarColorHue.isFinite {
+            // Генерируем hue на основе имени, если значение невалидно
+            let hash = name.hashValue
+            return Double(abs(hash) % 360) / 360.0
+        }
+        return max(0.0, min(1.0, avatarColorHue)) // Ограничиваем диапазон 0-1
+    }
+    
     var body: some View {
         Group {
             if let image = image {
@@ -45,8 +55,8 @@ struct AvatarView: View {
                     .accessibilityLabel("accessibility.profile_photo".localized + " \(name)")
             } else {
                 Circle()
-                    .fill(Color.pastelColor(hue: avatarColorHue).opacity(colorScheme == .dark ? 0.6 : 0.7))
-                    .frame(width: size, height: size)
+                    .fill(Color.pastelColor(hue: safeHue).opacity(colorScheme == .dark ? 0.6 : 0.7))
+                    .frame(width: max(size, 1), height: max(size, 1))
                     .overlay(
                         Text(name.prefix(1).uppercased())
                             .font(avatarFontSize)

@@ -24,6 +24,7 @@ struct CalendarView: View {
     @Environment(\.colorScheme) var colorScheme
     @State private var selectedDate: Date? = nil
     @State private var visibleDate = Date()
+    @State private var selectedProfileId: UUID?
     
     var selectedDayProfiles: [Profile] {
         guard let date = selectedDate else { return [] }
@@ -95,7 +96,7 @@ struct CalendarView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ScrollView {
                 VStack(spacing: 0) {
                     // Нативный календарь iOS
@@ -103,9 +104,10 @@ struct CalendarView: View {
                         visibleDate: $visibleDate,
                         selectedDate: $selectedDate,
                         events: allEvents,
-                        locale: localizationManager.currentLanguage.locale
+                        locale: localizationManager.currentLanguage.locale,
+                        accentColor: settingsManager.accentColor.color
                     )
-                    .id(allEvents.count) // Принудительное обновление при изменении количества событий
+                    .id("\(allEvents.count)_\(settingsManager.accentColor.rawValue)") // Принудительное обновление при изменении количества событий или акцентного цвета
                     .frame(height: AdaptiveSize.size(baseSize: AppConstants.UI.baseCalendarHeight))
                     .padding(.horizontal)
                     .padding(.vertical)
@@ -125,11 +127,15 @@ struct CalendarView: View {
                                 .font(.headline)
                                 .textCase(nil)) {
                                 ForEach(selectedDayProfiles) { profile in
-                                    NavigationLink(destination: ProfileDetailView(profileId: profile.id)) {
+                                    Button(action: {
+                                        selectedProfileId = profile.id
+                                    }) {
                                         ProfileRowView(
                                             profile: profile,
                                             locale: localizationManager.currentLanguage.locale
                                         )
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .contentShape(Rectangle())
                                         .transition(.opacity.combined(with: .move(edge: .top)))
                                     }
                                     .buttonStyle(PlainButtonStyle())
@@ -139,13 +145,22 @@ struct CalendarView: View {
                         .listStyle(.insetGrouped)
                         .scrollContentBackground(.hidden)
                         .scrollDisabled(true)
-                        .frame(height: CGFloat(selectedDayProfiles.count * 80 + 100))
+                        .frame(height: CGFloat(selectedDayProfiles.count) * 70 + 80)
                         .animation(.easeInOut(duration: AppConstants.UI.animationDuration), value: selectedDate)
                         .padding(.top, 16)
+                        .padding(.bottom, 16)
                     }
                 }
             }
             .navigationTitle("navigation.calendar".localized)
+            .navigationDestination(isPresented: Binding(
+                get: { selectedProfileId != nil },
+                set: { if !$0 { selectedProfileId = nil } }
+            )) {
+                if let profileId = selectedProfileId {
+                    ProfileDetailView(profileId: profileId)
+                }
+            }
             .background(Color(.systemGroupedBackground))
             .onAppear {
                 // При появлении View проверяем, нужно ли выбрать сегодня
@@ -164,7 +179,7 @@ struct CalendarView: View {
                         selectedDate = today
                     }) {
                         Text("button.today".localized)
-                            .foregroundColor(settingsManager.accentColor == .pink ? .pink : .blue)
+                            .foregroundColor(settingsManager.accentColor.color)
                     }
                 }
             }
@@ -193,10 +208,6 @@ struct CalendarView: View {
                 }
                 
                 Spacer()
-                
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
             }
             .padding()
             .background(colorScheme == .light ? Color.white : Color(.secondarySystemBackground))
@@ -218,6 +229,7 @@ struct iOSCalendarView: UIViewRepresentable {
     @Binding var selectedDate: Date?
     let events: [CustomEvent]
     let locale: Locale
+    let accentColor: Color
     
     func makeUIView(context: Context) -> UICalendarView {
         let calendarView = UICalendarView()
@@ -270,11 +282,38 @@ struct iOSCalendarView: UIViewRepresentable {
         
         // Обновляем декораторы для событий
         // Декоратор должен показываться каждый год, поэтому проверяем только день и месяц
-        context.coordinator.eventDays = Set(events.map { event in
+        let newEventDays = Set(events.map { event in
             let day = calendar.component(.day, from: event.nextDate)
             let month = calendar.component(.month, from: event.nextDate)
             return EventDate(month: month, day: day)
         })
+        
+        // Обновляем акцентный цвет
+        let newAccentUIColor = UIColor(accentColor)
+        // Сравниваем цвета через CGColor для корректного сравнения
+        let colorChanged = context.coordinator.accentUIColor.cgColor != newAccentUIColor.cgColor
+        
+        context.coordinator.eventDays = newEventDays
+        context.coordinator.accentUIColor = newAccentUIColor
+        
+        // Если изменился цвет, перезагружаем все декораторы
+        if colorChanged {
+            // Создаем DateComponents для всех дней с событиями в текущем видимом месяце
+            var dateComponentsToReload: [DateComponents] = []
+            let visibleYear = currentVisibleComponents.year ?? calendar.component(.year, from: Date())
+            
+            for eventDay in newEventDays {
+                var components = DateComponents()
+                components.year = visibleYear
+                components.month = eventDay.month
+                components.day = eventDay.day
+                dateComponentsToReload.append(components)
+            }
+            
+            if !dateComponentsToReload.isEmpty {
+                uiView.reloadDecorations(forDateComponents: dateComponentsToReload, animated: false)
+            }
+        }
         
         uiView.delegate = context.coordinator
     }
@@ -286,9 +325,12 @@ struct iOSCalendarView: UIViewRepresentable {
     class Coordinator: NSObject, UICalendarViewDelegate, UICalendarSelectionSingleDateDelegate {
         var parent: iOSCalendarView
         var eventDays: Set<EventDate> = []
+        var accentUIColor: UIColor
         
         init(_ parent: iOSCalendarView) {
             self.parent = parent
+            // Конвертируем SwiftUI Color в UIColor
+            self.accentUIColor = UIColor(parent.accentColor)
         }
         
         // MARK: - UICalendarViewDelegate
@@ -300,7 +342,7 @@ struct iOSCalendarView: UIViewRepresentable {
             
             // Проверяем, есть ли событие в этот день и месяц (любой год)
             if eventDays.contains(EventDate(month: month, day: day)) {
-                return UICalendarView.Decoration.default(color: .systemRed, size: .small)
+                return UICalendarView.Decoration.default(color: accentUIColor, size: .small)
             }
             
             return nil
@@ -329,3 +371,4 @@ struct iOSCalendarView: UIViewRepresentable {
         }
     }
 }
+

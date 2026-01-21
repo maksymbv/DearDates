@@ -40,9 +40,11 @@ struct ContentView: View {
                 .tag(3)
         }
         .preferredColorScheme(settingsManager.themeType.colorScheme)
-        .accentColor(settingsManager.accentColor == .pink ? .pink : .blue)
+        .accentColor(settingsManager.accentColor.color)
         .onAppear {
             setupAppearance()
+            // Очищаем badge при открытии главного экрана
+            NotificationManager.shared.clearBadge()
         }
     }
     

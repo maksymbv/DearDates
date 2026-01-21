@@ -22,14 +22,22 @@ extension Color {
     /// Генерирует пастельный цвет на основе сохраненного hue компонента
     /// Улучшена контрастность для accessibility
     static func pastelColor(hue: Double) -> Color {
+        // Валидация: проверяем на NaN и бесконечность, ограничиваем диапазон 0-1
+        let safeHue: Double
+        if hue.isNaN || !hue.isFinite {
+            safeHue = 0.5 // Дефолтное значение при ошибке
+        } else {
+            safeHue = max(0.0, min(1.0, hue)) // Ограничиваем диапазон 0-1
+        }
+        
         // Используем сохраненный hue для генерации стабильного пастельного цвета
         // Насыщенность и яркость вычисляются из hue для консистентности
         // Улучшена контрастность: минимальная насыщенность 0.4, максимальная яркость 0.9
-        let hash = Int(hue * 360)
+        let hash = Int(safeHue * 360)
         let saturation = 0.4 + Double(abs(hash / 10) % 40) / 100.0 // Насыщенность 0.4-0.8 (улучшена для контрастности)
         let brightness = 0.7 + Double(abs(hash / 100) % 20) / 100.0 // Яркость 0.7-0.9 (улучшена для контрастности)
         
-        return Color(hue: hue, saturation: saturation, brightness: brightness)
+        return Color(hue: safeHue, saturation: saturation, brightness: brightness)
     }
     
     static let appBackground = Color(hex: "FAF7F8")

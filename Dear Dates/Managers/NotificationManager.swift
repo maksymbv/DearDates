@@ -9,6 +9,7 @@ import Foundation
 import SwiftUI
 import Combine
 import UserNotifications
+import UIKit
 
 class NotificationManager: ObservableObject {
     static let shared = NotificationManager()
@@ -77,6 +78,27 @@ class NotificationManager: ObservableObject {
     
     func cancelAllNotifications() {
         UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
+    }
+    
+    /// Очищает badge на иконке приложения и удаляет все доставленные уведомления
+    func clearBadge() {
+        DispatchQueue.main.async {
+            // Используем новый API для iOS 17+
+            if #available(iOS 17.0, *) {
+                UNUserNotificationCenter.current().setBadgeCount(0) { error in
+                    if let error = error {
+                        AppLogger.log("Failed to clear badge: \(error.localizedDescription)", level: .error, category: "NotificationManager")
+                    } else {
+                        AppLogger.log("Badge cleared", level: .info, category: "NotificationManager")
+                    }
+                }
+            } else {
+                // Fallback для старых версий iOS
+                UIApplication.shared.applicationIconBadgeNumber = 0
+                AppLogger.log("Badge cleared", level: .info, category: "NotificationManager")
+            }
+            UNUserNotificationCenter.current().removeAllDeliveredNotifications()
+        }
     }
     
     // MARK: - Event Notifications

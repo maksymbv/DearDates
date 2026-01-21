@@ -50,17 +50,13 @@ struct GiftRowView: View {
                     }
                     
                     if let event = linkedEvent {
-                        HStack(spacing: 4) {
-                            Image(systemName: "calendar")
-                                .font(.caption2)
-                            Text(event.name)
-                                .font(.caption2)
-                        }
-                        .foregroundColor(settingsManager.accentColor.color)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(settingsManager.accentColor.color.opacity(0.1))
-                        .cornerRadius(8)
+                        Text(event.name)
+                            .font(.caption2)
+                            .foregroundColor(settingsManager.accentColor.color)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(settingsManager.accentColor.color.opacity(0.1))
+                            .cornerRadius(8)
                     }
                 }
                 Spacer()

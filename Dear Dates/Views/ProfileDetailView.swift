@@ -104,6 +104,7 @@ struct ProfileDetailView: View {
                                     .foregroundColor(settingsManager.accentColor.color)
                             }
                         }
+                        .padding(.bottom, 8)
                     }
                     
                     if !profile.notes.isEmpty {
@@ -132,6 +133,7 @@ struct ProfileDetailView: View {
                                     .foregroundColor(settingsManager.accentColor.color)
                             }
                         }
+                        .padding(.bottom, 8)
                     }
                     
                     Section {

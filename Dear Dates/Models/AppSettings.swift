@@ -12,6 +12,9 @@ import Combine
 enum AccentColor: String, Codable, CaseIterable {
     case pink = "pink"
     case blue = "blue"
+    case green = "green"
+    case yellow = "yellow"
+    case purple = "purple"
     
     var color: Color {
         switch self {
@@ -19,6 +22,12 @@ enum AccentColor: String, Codable, CaseIterable {
             return .pink
         case .blue:
             return .blue
+        case .green:
+            return Color(red: 0.4, green: 0.7, blue: 0.5) // Мягкий зеленый
+        case .yellow:
+            return Color(red: 1.0, green: 0.85, blue: 0.4) // Теплый желтый
+        case .purple:
+            return Color(red: 0.7, green: 0.5, blue: 0.9) // Фиолетовый
         }
     }
 }

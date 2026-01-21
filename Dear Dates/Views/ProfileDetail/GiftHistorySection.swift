@@ -48,13 +48,16 @@ struct YearGiftsSection: View {
                     onEditGift(gift)
                 })
                 .transition(.opacity.combined(with: .scale))
+                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
             }
         } header: {
             Text("\(String(year))")
                 .font(.subheadline)
                 .fontWeight(.semibold)
                 .foregroundColor(.secondary)
+                .listRowInsets(EdgeInsets(top: 0, leading: 0, bottom: 0, trailing: 0))
         }
+        .listSectionSeparator(.hidden)
     }
 }
 

@@ -64,10 +64,22 @@ extension EnvironmentValues {
 struct AdaptiveSize {
     /// Вычисляет адаптивный размер на основе ширины экрана
     static func size(baseSize: CGFloat, screenWidth: CGFloat) -> CGFloat {
+        // Валидация: проверяем на валидные значения
+        guard baseSize > 0, screenWidth > 0, AppConstants.UI.baseScreenWidth > 0 else {
+            return baseSize // Возвращаем базовый размер при ошибке
+        }
+        
         let scaleFactor = screenWidth / AppConstants.UI.baseScreenWidth
         // Ограничиваем масштабирование: минимум 1.0, максимум 1.2 для очень больших экранов
         let clampedScale = min(max(scaleFactor, 1.0), 1.2)
-        return baseSize * clampedScale
+        let result = baseSize * clampedScale
+        
+        // Проверяем результат на NaN и бесконечность
+        guard result.isFinite && !result.isNaN else {
+            return baseSize
+        }
+        
+        return result
     }
     
     /// Вычисляет адаптивный размер на основе текущего экрана
@@ -80,9 +92,22 @@ struct AdaptiveSize {
     /// Использует более мягкое масштабирование (до 1.1x) для декоративных элементов
     static func iconSize(baseSize: CGFloat) -> CGFloat {
         let screenWidth = UIScreen.main.bounds.width
+        
+        // Валидация: проверяем на валидные значения
+        guard baseSize > 0, screenWidth > 0, AppConstants.UI.baseScreenWidth > 0 else {
+            return baseSize
+        }
+        
         let scaleFactor = screenWidth / AppConstants.UI.baseScreenWidth
         // Для иконок используем более мягкое масштабирование: максимум 1.1x
         let clampedScale = min(max(scaleFactor, 1.0), 1.1)
-        return baseSize * clampedScale
+        let result = baseSize * clampedScale
+        
+        // Проверяем результат на NaN и бесконечность
+        guard result.isFinite && !result.isNaN else {
+            return baseSize
+        }
+        
+        return result
     }
 }

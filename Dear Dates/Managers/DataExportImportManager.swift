@@ -11,14 +11,12 @@ import SwiftUI
 struct ExportData: Codable {
     let profiles: [ProfileCodable]
     let gifts: [GiftCodable]
-    let userProfile: UserProfileCodable
     let exportDate: Date
     let appVersion: String
     
-    init(profiles: [Profile], gifts: [Gift], userProfile: UserProfile) {
+    init(profiles: [Profile], gifts: [Gift]) {
         self.profiles = profiles.map { $0.toCodable() }
         self.gifts = gifts.map { $0.toCodable() }
-        self.userProfile = userProfile.toCodable()
         self.exportDate = Date()
         self.appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.2"
     }
@@ -31,8 +29,8 @@ class DataExportImportManager {
     
     // MARK: - Export
     
-    func exportData(profiles: [Profile], gifts: [Gift], userProfile: UserProfile) -> Data? {
-        let exportData = ExportData(profiles: profiles, gifts: gifts, userProfile: userProfile)
+    func exportData(profiles: [Profile], gifts: [Gift]) -> Data? {
+        let exportData = ExportData(profiles: profiles, gifts: gifts)
         
         do {
             let encoder = JSONEncoder()
@@ -46,8 +44,8 @@ class DataExportImportManager {
         }
     }
     
-    func exportToFile(profiles: [Profile], gifts: [Gift], userProfile: UserProfile) -> URL? {
-        guard let data = exportData(profiles: profiles, gifts: gifts, userProfile: userProfile) else {
+    func exportToFile(profiles: [Profile], gifts: [Gift]) -> URL? {
+        guard let data = exportData(profiles: profiles, gifts: gifts) else {
             return nil
         }
         
@@ -66,13 +64,13 @@ class DataExportImportManager {
     
     // MARK: - Import
     
-    func importData(from data: Data) -> (profiles: [ProfileCodable], gifts: [GiftCodable], userProfile: UserProfileCodable)? {
+    func importData(from data: Data) -> (profiles: [ProfileCodable], gifts: [GiftCodable])? {
         do {
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
             let exportData = try decoder.decode(ExportData.self, from: data)
             
-            return (exportData.profiles, exportData.gifts, exportData.userProfile)
+            return (exportData.profiles, exportData.gifts)
         } catch {
             AppLogger.log("Error importing data: \(error.localizedDescription)", level: .error, category: "DataExportImportManager")
             ErrorManager.shared.showError(.dataLoadFailed(error.localizedDescription))
@@ -80,7 +78,7 @@ class DataExportImportManager {
         }
     }
     
-    func importFromFile(at url: URL) -> (profiles: [ProfileCodable], gifts: [GiftCodable], userProfile: UserProfileCodable)? {
+    func importFromFile(at url: URL) -> (profiles: [ProfileCodable], gifts: [GiftCodable])? {
         do {
             let data = try Data(contentsOf: url)
             return importData(from: data)

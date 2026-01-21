@@ -26,6 +26,45 @@ struct DearDatesApp: App {
     
     var body: some Scene {
         WindowGroup {
+            AppContentView(
+                showOnboarding: $showOnboarding,
+                dataManager: dataManager,
+                settingsManager: settingsManager,
+                localizationManager: localizationManager,
+                imageManager: imageManager,
+                notificationManager: notificationManager,
+                errorManager: errorManager
+            )
+        }
+        .modelContainer(for: [Profile.self, Gift.self, CustomEvent.self])
+    }
+    
+    private func setupAppInitialization() {
+        // Настраиваем делегат для обработки тапов на уведомления
+        UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
+        
+        // Настраиваем защиту базы данных (с задержкой, чтобы SwiftData успел создать файлы)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            DatabaseProtectionManager.shared.setupMainDatabaseProtection()
+            DatabaseProtectionManager.shared.setupNotificationSnapshotProtection()
+        }
+    }
+}
+
+// MARK: - App Content View
+struct AppContentView: View {
+    @Binding var showOnboarding: Bool
+    @ObservedObject var dataManager: DataManager
+    @ObservedObject var settingsManager: SettingsManager
+    @ObservedObject var localizationManager: LocalizationManager
+    @ObservedObject var imageManager: ImageManager
+    @ObservedObject var notificationManager: NotificationManager
+    @ObservedObject var errorManager: ErrorManager
+    
+    @Environment(\.scenePhase) private var scenePhase
+    
+    var body: some View {
+        Group {
             if showOnboarding {
                 OnboardingView(isPresented: $showOnboarding)
                     .environmentObject(dataManager)
@@ -45,17 +84,15 @@ struct DearDatesApp: App {
                     .errorAlert()
             }
         }
-        .modelContainer(for: [Profile.self, Gift.self, UserProfile.self, CustomEvent.self])
-    }
-    
-    private func setupAppInitialization() {
-        // Настраиваем делегат для обработки тапов на уведомления
-        UNUserNotificationCenter.current().delegate = NotificationDelegate.shared
-        
-        // Настраиваем защиту базы данных (с задержкой, чтобы SwiftData успел создать файлы)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            DatabaseProtectionManager.shared.setupMainDatabaseProtection()
-            DatabaseProtectionManager.shared.setupNotificationSnapshotProtection()
+        .onAppear {
+            // Очищаем badge при открытии приложения
+            notificationManager.clearBadge()
+        }
+        .onChange(of: scenePhase) { oldPhase, newPhase in
+            // Очищаем badge при активации приложения (когда возвращаемся из фона)
+            if newPhase == .active {
+                notificationManager.clearBadge()
+            }
         }
     }
 }

@@ -14,7 +14,6 @@ import Combine
 class SettingsViewModel: ObservableObject {
     @Published var showingSupportEmail = false
     @Published var showingFeatureRequest = false
-    @Published var showingUserProfile = false
     @Published var showingExportSheet = false
     @Published var showingImportPicker = false
     @Published var showingEasterEgg = false

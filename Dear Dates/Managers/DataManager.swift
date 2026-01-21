@@ -18,51 +18,16 @@ class DataManager: ObservableObject {
     private var modelContext: ModelContext?
     
     private init() {
-        setupSwiftData()
+        // Инициализация SwiftData теперь происходит через .modelContainer в App
+        // Это предотвращает дублирование и позволяет миграции выполняться правильно
+        isLoading = false
     }
     
     // MARK: - SwiftData Setup
     
-    func setupSwiftData() {
-        let schema = Schema([
-            Profile.self,
-            Gift.self,
-            UserProfile.self,
-            CustomEvent.self
-        ])
-        
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-        
-        do {
-            let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
-            modelContext = ModelContext(container)
-            
-            // Данные теперь загружаются через @Query в Views
-            isLoading = false
-        } catch {
-            AppLogger.log("Error setting up SwiftData: \(error.localizedDescription)", level: .error, category: "DataManager")
-            ErrorManager.shared.showError(.dataLoadFailed(error.localizedDescription))
-            isLoading = false
-        }
-    }
-    
-    // MARK: - User Profile
-    
-    func updateUserProfile(_ profile: UserProfile, context: ModelContext) {
-        // ModelContext должен использоваться на главном потоке
-        profile.updatedAt = Date()
-        
-        // Если профиль еще не в контексте, добавляем его
-        // SwiftData автоматически обработает, если объект уже в контексте
-        context.insert(profile)
-        
-        do {
-            try context.save()
-        } catch {
-            let errorMessage = error.localizedDescription
-            AppLogger.log("Error saving user profile: \(errorMessage)", level: .error, category: "DataManager")
-            ErrorManager.shared.showError(.dataSaveFailed(errorMessage))
-        }
+    func setupModelContext(from container: ModelContainer) {
+        // Вызывается из App после создания ModelContainer
+        modelContext = ModelContext(container)
     }
     
     // MARK: - Profiles
@@ -193,13 +158,9 @@ class DataManager: ObservableObject {
         let giftsDescriptor = FetchDescriptor<Gift>()
         let gifts = (try? context.fetch(giftsDescriptor)) ?? []
         
-        let userProfileDescriptor = FetchDescriptor<UserProfile>()
-        let userProfile = (try? context.fetch(userProfileDescriptor).first) ?? UserProfile()
-        
         return DataExportImportManager.shared.exportData(
             profiles: profiles,
-            gifts: gifts,
-            userProfile: userProfile
+            gifts: gifts
         )
     }
     
@@ -210,13 +171,9 @@ class DataManager: ObservableObject {
         let giftsDescriptor = FetchDescriptor<Gift>()
         let gifts = (try? context.fetch(giftsDescriptor)) ?? []
         
-        let userProfileDescriptor = FetchDescriptor<UserProfile>()
-        let userProfile = (try? context.fetch(userProfileDescriptor).first) ?? UserProfile()
-        
         return DataExportImportManager.shared.exportToFile(
             profiles: profiles,
-            gifts: gifts,
-            userProfile: userProfile
+            gifts: gifts
         )
     }
     
@@ -236,18 +193,6 @@ class DataManager: ObservableObject {
         for giftCodable in imported.gifts {
             let gift = Gift(from: giftCodable)
             context.insert(gift)
-        }
-        
-        // Обновляем профиль пользователя
-        let userProfileDescriptor = FetchDescriptor<UserProfile>()
-        if let existing = try? context.fetch(userProfileDescriptor).first {
-            existing.name = imported.userProfile.name
-            existing.photoPath = imported.userProfile.photoPath
-            existing.updatedAt = Date()
-            existing.photoId = imported.userProfile.photoId
-        } else {
-            let userProfile = UserProfile(from: imported.userProfile)
-            context.insert(userProfile)
         }
         
         do {
