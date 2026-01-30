@@ -53,11 +53,13 @@ struct AppSettings: Codable {
     var themeType: ThemeType
     var accentColor: AccentColor
     var notificationsEnabled: Bool
+    var iCloudSyncEnabled: Bool
     
-    init(themeType: ThemeType = .system, accentColor: AccentColor = .pink, notificationsEnabled: Bool = true) {
+    init(themeType: ThemeType = .system, accentColor: AccentColor = .pink, notificationsEnabled: Bool = true, iCloudSyncEnabled: Bool = false) {
         self.themeType = themeType
         self.accentColor = accentColor
         self.notificationsEnabled = notificationsEnabled
+        self.iCloudSyncEnabled = iCloudSyncEnabled
     }
     
     // Для обратной совместимости при декодировании старых настроек
@@ -77,6 +79,8 @@ struct AppSettings: Codable {
         
         accentColor = try container.decode(AccentColor.self, forKey: .accentColor)
         notificationsEnabled = try container.decode(Bool.self, forKey: .notificationsEnabled)
+        // iCloudSyncEnabled может отсутствовать в старых настройках
+        iCloudSyncEnabled = (try? container.decode(Bool.self, forKey: .iCloudSyncEnabled)) ?? false
     }
     
     func encode(to encoder: Encoder) throws {
@@ -85,6 +89,7 @@ struct AppSettings: Codable {
         try container.encode(accentColor, forKey: .accentColor)
         try container.encode(notificationsEnabled, forKey: .notificationsEnabled)
         // isDarkMode не кодируем, так как это вычисляемое свойство
+        try container.encode(iCloudSyncEnabled, forKey: .iCloudSyncEnabled)
     }
     
     enum CodingKeys: String, CodingKey {
@@ -92,6 +97,7 @@ struct AppSettings: Codable {
         case isDarkMode // Используется только для чтения старых настроек
         case accentColor
         case notificationsEnabled
+        case iCloudSyncEnabled
     }
 }
 

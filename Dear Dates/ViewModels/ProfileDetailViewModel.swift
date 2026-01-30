@@ -16,7 +16,9 @@ class ProfileDetailViewModel: ObservableObject {
     @Published var showingEditGift: Gift? = nil
     @Published var showingAddEvent = false
     @Published var showingEditEvent: CustomEvent? = nil
-    
+    /// true, когда открыт дочерний экран (идея подарка/событие) — не показывать таб-бар в onDisappear
+    @Published var navigatingToChild = false
+
     private let dataManager: DataManager
     private let notificationManager: NotificationManager
     
@@ -28,10 +30,5 @@ class ProfileDetailViewModel: ObservableObject {
         self.notificationManager = notificationManager ?? NotificationManager.shared
     }
     
-    func toggleFavorite(profile: Profile, context: ModelContext) {
-        profile.isFavorite.toggle()
-        profile.updatedAt = Date()
-        dataManager.updateProfile(profile, notificationManager: notificationManager, context: context)
-    }
 }
 

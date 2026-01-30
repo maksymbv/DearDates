@@ -8,6 +8,8 @@
 import SwiftUI
 import SwiftData
 import UserNotifications
+import CloudKit
+import Foundation
 
 @main
 struct DearDatesApp: App {
@@ -19,6 +21,58 @@ struct DearDatesApp: App {
     @StateObject private var errorManager = ErrorManager.shared
     
     @State private var showOnboarding = !UserDefaults.standard.bool(forKey: "OnboardingCompleted")
+    
+    // Singleton ModelContainer - создается один раз
+    static let sharedModelContainer: ModelContainer = {
+        let schema = Schema([Profile.self, Gift.self, CustomEvent.self])
+        
+        // Проверяем, включена ли синхронизация iCloud в настройках
+        let iCloudEnabled = SettingsManager.shared.iCloudSyncEnabled
+        
+        let configuration: ModelConfiguration
+        if iCloudEnabled {
+            // Используем CloudKit
+            configuration = ModelConfiguration(
+                schema: schema,
+                isStoredInMemoryOnly: false,
+                cloudKitDatabase: .automatic
+            )
+        } else {
+            // Локальное хранилище без CloudKit
+            configuration = ModelConfiguration(
+                schema: schema,
+                isStoredInMemoryOnly: false
+            )
+        }
+        
+        do {
+            let container = try ModelContainer(for: schema, configurations: [configuration])
+            print("✅ ModelContainer created (\(iCloudEnabled ? "with CloudKit" : "local storage only"))")
+            return container
+        } catch {
+            // Если ошибка связана с CloudKit (нет аккаунта, проблемы с инициализацией), пробуем без CloudKit
+            let errorDescription = error.localizedDescription.lowercased()
+            if iCloudEnabled && (errorDescription.contains("icloud") || errorDescription.contains("cloudkit") || errorDescription.contains("ckaccountstatus") || errorDescription.contains("134400")) {
+                AppLogger.log("CloudKit initialization failed, falling back to local storage: \(error.localizedDescription)", level: .warning, category: "ModelContainer")
+                // Пробуем создать контейнер без CloudKit
+                let fallbackConfiguration = ModelConfiguration(
+                    schema: schema,
+                    isStoredInMemoryOnly: false
+                )
+                do {
+                    let container = try ModelContainer(for: schema, configurations: [fallbackConfiguration])
+                    print("✅ ModelContainer created (local storage only, CloudKit fallback)")
+                    return container
+                } catch {
+                    print("❌ Critical error: Could not create ModelContainer: \(error)")
+                    fatalError("Could not create ModelContainer: \(error)")
+                }
+            } else {
+                print("❌ Critical error: Could not create ModelContainer: \(error)")
+                fatalError("Could not create ModelContainer: \(error)")
+            }
+        }
+    }()
     
     init() {
         setupAppInitialization()
@@ -36,7 +90,7 @@ struct DearDatesApp: App {
                 errorManager: errorManager
             )
         }
-        .modelContainer(for: [Profile.self, Gift.self, CustomEvent.self])
+        .modelContainer(Self.sharedModelContainer)
     }
     
     private func setupAppInitialization() {

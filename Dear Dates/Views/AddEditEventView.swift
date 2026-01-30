@@ -142,7 +142,6 @@ struct AddEditEventView: View {
                 datePickerSheet
                     .presentationDetents([.height(250)])
             }
-            .tint(settingsManager.accentColor.color)
         }
     }
     

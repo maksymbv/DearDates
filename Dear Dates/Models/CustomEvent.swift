@@ -10,14 +10,17 @@ import SwiftData
 
 @Model
 final class CustomEvent: Identifiable {
-    @Attribute(.unique) var id: UUID
-    var profileId: UUID
-    var name: String
-    var month: Int // 1-12
-    var day: Int // 1-31
-    var remindAnnually: Bool
-    var createdAt: Date
-    var updatedAt: Date
+    var id: UUID = UUID() // Дефолтное значение для CloudKit
+    var profileId: UUID = UUID() // Дефолтное значение для CloudKit
+    var name: String = "" // Дефолтное значение для CloudKit
+    var month: Int = 1 // Дефолтное значение для CloudKit (1-12)
+    var day: Int = 1 // Дефолтное значение для CloudKit (1-31)
+    var remindAnnually: Bool = true // Дефолтное значение для CloudKit
+    var createdAt: Date = Date() // Дефолтное значение для CloudKit
+    var updatedAt: Date = Date() // Дефолтное значение для CloudKit
+    
+    // Обратная связь для CloudKit (обязательно опциональная)
+    var profile: Profile?
     
     init(id: UUID = UUID(),
          profileId: UUID,

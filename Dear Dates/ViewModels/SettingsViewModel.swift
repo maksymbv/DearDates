@@ -15,9 +15,14 @@ class SettingsViewModel: ObservableObject {
     @Published var showingSupportEmail = false
     @Published var showingFeatureRequest = false
     @Published var showingExportSheet = false
-    @Published var showingImportPicker = false
     @Published var showingEasterEgg = false
+    @Published var showingThemeSettings = false
+    @Published var showingLanguageSettings = false
+    /// true при открытии вложенного экрана (Тема/Язык) — не показывать таб-бар в onDisappear
+    @Published var navigatingToChild = false
     @Published var exportFileURL: URL?
+    /// Меняется после полного удаления данных — статистика в настройках перезапрашивается
+    @Published var statsRefreshId: UUID = UUID()
     
     private let dataManager: DataManager
     private let errorManager: ErrorManager
@@ -35,29 +40,6 @@ class SettingsViewModel: ObservableObject {
         }
         exportFileURL = url
         showingExportSheet = true
-    }
-    
-    func importData() {
-        showingImportPicker = true
-    }
-    
-    func handleImportResult(_ result: Result<[URL], Error>, context: ModelContext) {
-        switch result {
-        case .success(let urls):
-            guard let url = urls.first else { return }
-            guard DataExportImportManager.shared.importFromFile(at: url) != nil else {
-                return
-            }
-            
-            guard let data = try? Data(contentsOf: url) else {
-                return
-            }
-            
-            _ = dataManager.importData(from: data)
-        case .failure(let error):
-            AppLogger.log("Error importing file: \(error.localizedDescription)", level: .error, category: "SettingsViewModel")
-            errorManager.showError(.dataLoadFailed(error.localizedDescription))
-        }
     }
     
     // MARK: - Email
@@ -91,7 +73,7 @@ class SettingsViewModel: ObservableObject {
         if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
             return version
         }
-        return "1.2"
+        return "2.0.0"
     }
     
     func getEmailTemplate() -> String {

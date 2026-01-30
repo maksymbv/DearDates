@@ -16,67 +16,79 @@ struct SettingsView: View {
     
     @Environment(\.modelContext) var modelContext
     @Environment(\.colorScheme) var colorScheme
+    @EnvironmentObject var settingsManager: SettingsManager
     
     var body: some View {
-        NavigationView {
-            ZStack {
-                Color(.systemGroupedBackground)
-                    .ignoresSafeArea()
+        ZStack {
+            Color(.systemGroupedBackground)
+                .ignoresSafeArea()
+            
+            List {
+                SettingsUserProfileSection(statsRefreshId: viewModel.statsRefreshId)
                 
-                List {
-                    SettingsUserProfileSection()
-                    
-                    SettingsMainSection()
-                    
-                    SettingsDataSection(
-                        onExport: { viewModel.exportData(context: modelContext) },
-                        onImport: { viewModel.importData() }
-                    )
-                    
-                    SettingsSupportSection(
-                        onReportBug: { viewModel.openSupportEmail() },
-                        onRequestFeature: { viewModel.openFeatureRequest() }
-                    )
-                    
-                    SettingsAboutSection(
-                        appVersion: viewModel.getAppVersion(),
-                        onVersionLongPress: {
-                            viewModel.showingEasterEgg = true
-                        }
-                    )
-                }
-                .scrollContentBackground(.hidden)
-            }
-            .navigationTitle("navigation.settings".localized)
-            .fullScreenCover(isPresented: $viewModel.showingEasterEgg) {
-                EasterEggView()
-            }
-            .sheet(isPresented: $viewModel.showingSupportEmail) {
-                MailView(
-                    subject: "settings.support_email_subject".localized,
-                    messageBody: viewModel.getEmailTemplate(),
-                    toRecipients: ["max.qb@icloud.com"]
+                SettingsMainSection(viewModel: viewModel)
+                
+                SettingsDataSection(viewModel: viewModel)
+                
+                SettingsSupportSection(
+                    onReportBug: { viewModel.openSupportEmail() },
+                    onRequestFeature: { viewModel.openFeatureRequest() }
+                )
+                
+                SettingsAboutSection(
+                    appVersion: viewModel.getAppVersion(),
+                    onVersionLongPress: {
+                        viewModel.showingEasterEgg = true
+                    }
                 )
             }
-            .sheet(isPresented: $viewModel.showingFeatureRequest) {
-                MailView(
-                    subject: "settings.request_feature_subject".localized,
-                    messageBody: viewModel.getEmailTemplate(),
-                    toRecipients: ["max.qb@icloud.com"]
-                )
+            .scrollContentBackground(.hidden)
+        }
+        .navigationTitle("navigation.settings".localized)
+        .navigationBarTitleDisplayMode(.inline)
+        .tint(settingsManager.accentColor.color)
+        .fullScreenCover(isPresented: $viewModel.showingEasterEgg) {
+            EasterEggView()
+        }
+        .sheet(isPresented: $viewModel.showingSupportEmail) {
+            MailView(
+                subject: "settings.support_email_subject".localized,
+                messageBody: viewModel.getEmailTemplate(),
+                toRecipients: ["max.qb@icloud.com"]
+            )
+        }
+        .sheet(isPresented: $viewModel.showingFeatureRequest) {
+            MailView(
+                subject: "settings.request_feature_subject".localized,
+                messageBody: viewModel.getEmailTemplate(),
+                toRecipients: ["max.qb@icloud.com"]
+            )
+        }
+        .sheet(isPresented: $viewModel.showingExportSheet) {
+            if let url = viewModel.exportFileURL {
+                ActivityViewController(activityItems: [url])
             }
-            .sheet(isPresented: $viewModel.showingExportSheet) {
-                if let url = viewModel.exportFileURL {
-                    ActivityViewController(activityItems: [url])
-                }
+        }
+        .onAppear {
+            TabBarHelper.hideTabBar()
+            viewModel.navigatingToChild = false
+        }
+        .onDisappear {
+            if !viewModel.navigatingToChild {
+                TabBarHelper.showTabBar()
             }
-            .fileImporter(
-                isPresented: $viewModel.showingImportPicker,
-                allowedContentTypes: [.json],
-                allowsMultipleSelection: false
-            ) { result in
-                viewModel.handleImportResult(result, context: modelContext)
-            }
+        }
+        .onChange(of: viewModel.showingThemeSettings) { _, newValue in
+            if newValue { viewModel.navigatingToChild = true }
+        }
+        .onChange(of: viewModel.showingLanguageSettings) { _, newValue in
+            if newValue { viewModel.navigatingToChild = true }
+        }
+        .navigationDestination(isPresented: $viewModel.showingThemeSettings) {
+            ThemeSettingsView(onDismiss: { viewModel.showingThemeSettings = false })
+        }
+        .navigationDestination(isPresented: $viewModel.showingLanguageSettings) {
+            LanguageSettingsView(onDismiss: { viewModel.showingLanguageSettings = false })
         }
     }
 }
@@ -85,6 +97,7 @@ struct ThemeSettingsView: View {
     @EnvironmentObject var settingsManager: SettingsManager
     @EnvironmentObject var localizationManager: LocalizationManager
     @Environment(\.colorScheme) var colorScheme
+    var onDismiss: () -> Void = {}
     
     var body: some View {
         ZStack {
@@ -211,38 +224,8 @@ struct ThemeSettingsView: View {
         }
         .navigationTitle("section.appearance".localized)
         .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
-struct NotificationsSettingsView: View {
-    @EnvironmentObject var settingsManager: SettingsManager
-    @EnvironmentObject var localizationManager: LocalizationManager
-    @Environment(\.colorScheme) var colorScheme
-    
-    var body: some View {
-        ZStack {
-            Color(.systemGroupedBackground)
-                .ignoresSafeArea()
-            
-            Form {
-                Section(header: Text("navigation.notifications".localized)) {
-                    Toggle("label.enable_notifications".localized, isOn: $settingsManager.notificationsEnabled)
-                    
-                    if settingsManager.notificationsEnabled {
-                        Text("message.notifications_enabled_description".localized)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    } else {
-                        Text("message.notifications_disabled".localized)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-            }
-            .scrollContentBackground(.hidden)
-        }
-        .navigationTitle("navigation.notifications".localized)
-        .navigationBarTitleDisplayMode(.inline)
+        .onAppear { TabBarHelper.hideTabBar() }
+        .onDisappear { onDismiss() }
     }
 }
 

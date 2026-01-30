@@ -99,7 +99,6 @@ struct AddEditProfileView: View {
                 // Сохраняем профили в @State для использования в ViewModel
                 updateProfilesForValidation()
             }
-            .tint(settingsManager.accentColor.color)
         }
     }
     

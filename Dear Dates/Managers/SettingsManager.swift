@@ -34,6 +34,17 @@ class SettingsManager: ObservableObject {
         }
     }
     
+    @Published var iCloudSyncEnabled: Bool {
+        didSet {
+            saveSettings()
+            // При изменении настройки iCloud нужно перезапустить приложение
+            // для применения изменений в ModelContainer
+            if oldValue != iCloudSyncEnabled {
+                AppLogger.log("iCloud sync setting changed to: \(iCloudSyncEnabled)", level: .info, category: "SettingsManager")
+            }
+        }
+    }
+    
     // Для обратной совместимости
     var isDarkMode: Bool {
         get {
@@ -52,15 +63,17 @@ class SettingsManager: ObservableObject {
             self.themeType = settings.themeType
             self.accentColor = settings.accentColor
             self.notificationsEnabled = settings.notificationsEnabled
+            self.iCloudSyncEnabled = settings.iCloudSyncEnabled
         } else {
             self.themeType = .system
             self.accentColor = .pink
             self.notificationsEnabled = true
+            self.iCloudSyncEnabled = false
         }
     }
     
     private func saveSettings() {
-        let settings = AppSettings(themeType: themeType, accentColor: accentColor, notificationsEnabled: notificationsEnabled)
+        let settings = AppSettings(themeType: themeType, accentColor: accentColor, notificationsEnabled: notificationsEnabled, iCloudSyncEnabled: iCloudSyncEnabled)
         if let encoded = try? JSONEncoder().encode(settings) {
             UserDefaults.standard.set(encoded, forKey: settingsKey)
         }

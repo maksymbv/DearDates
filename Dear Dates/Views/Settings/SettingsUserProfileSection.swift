@@ -9,6 +9,8 @@ import SwiftUI
 import SwiftData
 
 struct SettingsUserProfileSection: View {
+    var statsRefreshId: UUID = UUID()
+    
     @Query private var allProfiles: [Profile]
     @Query private var allGifts: [Gift]
     
@@ -45,9 +47,6 @@ struct SettingsUserProfileSection: View {
                 }
                 .frame(maxWidth: .infinity)
                 
-                // Разделитель
-                Divider()
-                    .frame(height: 60)
                 
                 // Статистика идей подарков
                 VStack(spacing: 8) {
@@ -69,9 +68,6 @@ struct SettingsUserProfileSection: View {
                 }
                 .frame(maxWidth: .infinity)
                 
-                // Разделитель
-                Divider()
-                    .frame(height: 60)
                 
                 // Статистика подаренных подарков
                 VStack(spacing: 8) {
@@ -97,6 +93,7 @@ struct SettingsUserProfileSection: View {
             .accessibilityElement(children: .combine)
             .accessibilityLabel(String(format: "accessibility.user_profile_stats".localized, allProfiles.count, giftIdeasCount))
         }
+        .id(statsRefreshId)
     }
 }
 

@@ -17,35 +17,69 @@ enum AppLanguage: String, CaseIterable {
     var locale: Locale {
         Locale(identifier: rawValue)
     }
+    
+    var displayName: String {
+        switch self {
+        case .russian:
+            return "Русский"
+        case .ukrainian:
+            return "Українська"
+        case .english:
+            return "English"
+        }
+    }
 }
 
 class LocalizationManager: ObservableObject {
     static let shared = LocalizationManager()
     
-    @Published var currentLanguage: AppLanguage
+    private let languageKey = "AppSelectedLanguage"
+    
+    @Published var currentLanguage: AppLanguage {
+        didSet {
+            // Сохраняем выбранный язык в UserDefaults
+            UserDefaults.standard.set(currentLanguage.rawValue, forKey: languageKey)
+            // Очищаем кэш локализаций при смене языка
+            LocalizedStrings.clearCache()
+        }
+    }
     
     private init() {
-        // Определяем язык системы
-        let systemLanguage = Locale.preferredLanguages.first?.prefix(2) ?? "en"
-        
-        switch systemLanguage {
-        case "ru":
-            currentLanguage = .russian
-        case "uk":
-            currentLanguage = .ukrainian
-        default:
-            currentLanguage = .english
+        // Сначала проверяем сохраненный язык в UserDefaults
+        if let savedLanguage = UserDefaults.standard.string(forKey: languageKey),
+           let language = AppLanguage(rawValue: savedLanguage) {
+            self.currentLanguage = language
+        } else {
+            // Если сохраненного языка нет, определяем по системному языку
+            let systemLanguage = Locale.preferredLanguages.first?.prefix(2) ?? "en"
+            
+            switch systemLanguage {
+            case "ru":
+                self.currentLanguage = .russian
+            case "uk":
+                self.currentLanguage = .ukrainian
+            default:
+                self.currentLanguage = .english
+            }
         }
     }
     
     func localizedString(_ key: String) -> String {
         return LocalizedStrings.string(key, language: currentLanguage)
     }
+    
+    func setLanguage(_ language: AppLanguage) {
+        currentLanguage = language
+    }
 }
 
 // Структура для хранения всех переведенных строк
 struct LocalizedStrings {
     private static var cachedStrings: [AppLanguage: [String: String]] = [:]
+    
+    static func clearCache() {
+        cachedStrings.removeAll()
+    }
     
     static func string(_ key: String, language: AppLanguage) -> String {
         let strings = strings(for: language)

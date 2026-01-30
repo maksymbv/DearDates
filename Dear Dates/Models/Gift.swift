@@ -10,15 +10,18 @@ import SwiftData
 
 @Model
 final class Gift: Identifiable, Equatable {
-    @Attribute(.unique) var id: UUID
-    var profileId: UUID
-    var title: String
-    var notes: String
-    var isGiven: Bool
+    var id: UUID = UUID() // Дефолтное значение для CloudKit
+    var profileId: UUID = UUID() // Дефолтное значение для CloudKit
+    var title: String = "" // Дефолтное значение для CloudKit
+    var notes: String = "" // Дефолтное значение для CloudKit
+    var isGiven: Bool = false // Дефолтное значение для CloudKit
     var givenYear: Int?
     var eventId: UUID? // Привязка к событию
-    var createdAt: Date
-    var updatedAt: Date
+    var createdAt: Date = Date() // Дефолтное значение для CloudKit
+    var updatedAt: Date = Date() // Дефолтное значение для CloudKit
+    
+    // Обратная связь для CloudKit (обязательно опциональная)
+    var profile: Profile?
     
     init(id: UUID = UUID(),
          profileId: UUID,

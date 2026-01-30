@@ -1,5 +1,5 @@
 //
-//  DataExportImportManager.swift
+//  DataExportManager.swift
 //  DearDates
 //
 //  Created on 2026
@@ -18,12 +18,12 @@ struct ExportData: Codable {
         self.profiles = profiles.map { $0.toCodable() }
         self.gifts = gifts.map { $0.toCodable() }
         self.exportDate = Date()
-        self.appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.2"
+        self.appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "2.0.0"
     }
 }
 
-class DataExportImportManager {
-    static let shared = DataExportImportManager()
+class DataExportManager {
+    static let shared = DataExportManager()
     
     private init() {}
     
@@ -38,7 +38,7 @@ class DataExportImportManager {
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
             return try encoder.encode(exportData)
         } catch {
-            AppLogger.log("Error exporting data: \(error.localizedDescription)", level: .error, category: "DataExportImportManager")
+            AppLogger.log("Error exporting data: \(error.localizedDescription)", level: .error, category: "DataExportManager")
             ErrorManager.shared.showError(.dataSaveFailed(error.localizedDescription))
             return nil
         }
@@ -56,38 +56,12 @@ class DataExportImportManager {
             try data.write(to: tempURL)
             return tempURL
         } catch {
-            AppLogger.log("Error writing export file: \(error.localizedDescription)", level: .error, category: "DataExportImportManager")
+            AppLogger.log("Error writing export file: \(error.localizedDescription)", level: .error, category: "DataExportManager")
             ErrorManager.shared.showError(.dataSaveFailed(error.localizedDescription))
             return nil
         }
     }
     
-    // MARK: - Import
-    
-    func importData(from data: Data) -> (profiles: [ProfileCodable], gifts: [GiftCodable])? {
-        do {
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
-            let exportData = try decoder.decode(ExportData.self, from: data)
-            
-            return (exportData.profiles, exportData.gifts)
-        } catch {
-            AppLogger.log("Error importing data: \(error.localizedDescription)", level: .error, category: "DataExportImportManager")
-            ErrorManager.shared.showError(.dataLoadFailed(error.localizedDescription))
-            return nil
-        }
-    }
-    
-    func importFromFile(at url: URL) -> (profiles: [ProfileCodable], gifts: [GiftCodable])? {
-        do {
-            let data = try Data(contentsOf: url)
-            return importData(from: data)
-        } catch {
-            AppLogger.log("Error reading import file: \(error.localizedDescription)", level: .error, category: "DataExportImportManager")
-            ErrorManager.shared.showError(.dataLoadFailed(error.localizedDescription))
-            return nil
-        }
-    }
 }
 
 // MARK: - DateFormatter Extension

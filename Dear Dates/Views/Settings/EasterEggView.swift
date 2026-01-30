@@ -11,6 +11,7 @@ struct EasterEggView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var localizationManager: LocalizationManager
+    @EnvironmentObject var settingsManager: SettingsManager
     
     var body: some View {
         NavigationView {
@@ -32,7 +33,7 @@ struct EasterEggView: View {
             .navigationTitle("easteregg.title".localized)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: { dismiss() }) {
                         Image(systemName: "xmark")
                     }

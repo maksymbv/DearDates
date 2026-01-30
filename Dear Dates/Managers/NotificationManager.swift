@@ -201,8 +201,9 @@ class NotificationManager: ObservableObject {
         var identifiers: [String] = []
         
         // Создаем идентификаторы для всех возможных дней напоминания (на случай, если reminderDays изменились)
+        let eventId = event.id
         for days in 0...365 {
-            identifiers.append("event_\(event.id.uuidString)_\(days)")
+            identifiers.append("event_\(eventId.uuidString)_\(days)")
         }
         
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiers)

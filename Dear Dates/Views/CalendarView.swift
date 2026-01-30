@@ -109,9 +109,7 @@ struct CalendarView: View {
                     )
                     .id("\(allEvents.count)_\(settingsManager.accentColor.rawValue)") // Принудительное обновление при изменении количества событий или акцентного цвета
                     .frame(height: AdaptiveSize.size(baseSize: AppConstants.UI.baseCalendarHeight))
-                    .padding(.horizontal)
-                    .padding(.vertical)
-                    .padding(.top, 8)
+                    .padding(.top, 48)
                     
                     // Плашка "На сегодня событий нет" с ближайшим событием
                     if shouldShowNoEventsBanner, let nearest = nearestEvent {
@@ -152,7 +150,7 @@ struct CalendarView: View {
                     }
                 }
             }
-            .navigationTitle("navigation.calendar".localized)
+            .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(isPresented: Binding(
                 get: { selectedProfileId != nil },
                 set: { if !$0 { selectedProfileId = nil } }
@@ -252,6 +250,19 @@ struct iOSCalendarView: UIViewRepresentable {
         // Настраиваем constraints для ограничения ширины
         calendarView.translatesAutoresizingMaskIntoConstraints = false
         
+        // Обновляем декоратор для сегодняшнего дня после создания календаря
+        DispatchQueue.main.async {
+            let today = Date()
+            let todayComponents = calendar.dateComponents([.year, .month, .day], from: today)
+            if let year = todayComponents.year, let month = todayComponents.month, let day = todayComponents.day {
+                var components = DateComponents()
+                components.year = year
+                components.month = month
+                components.day = day
+                calendarView.reloadDecorations(forDateComponents: [components], animated: false)
+            }
+        }
+        
         return calendarView
     }
     
@@ -296,11 +307,18 @@ struct iOSCalendarView: UIViewRepresentable {
         context.coordinator.eventDays = newEventDays
         context.coordinator.accentUIColor = newAccentUIColor
         
-        // Если изменился цвет, перезагружаем все декораторы
-        if colorChanged {
+        // Если изменился цвет или месяц, перезагружаем все декораторы (включая сегодняшний день)
+        let today = Date()
+        let todayComponents = calendar.dateComponents([.year, .month, .day], from: today)
+        let visibleYear = currentVisibleComponents.year ?? calendar.component(.year, from: Date())
+        let visibleMonth = currentVisibleComponents.month ?? calendar.component(.month, from: Date())
+        
+        // Проверяем, находится ли сегодняшний день в видимом месяце
+        let isTodayInVisibleMonth = todayComponents.year == visibleYear && todayComponents.month == visibleMonth
+        
+        if colorChanged || isTodayInVisibleMonth {
             // Создаем DateComponents для всех дней с событиями в текущем видимом месяце
             var dateComponentsToReload: [DateComponents] = []
-            let visibleYear = currentVisibleComponents.year ?? calendar.component(.year, from: Date())
             
             for eventDay in newEventDays {
                 var components = DateComponents()
@@ -308,6 +326,15 @@ struct iOSCalendarView: UIViewRepresentable {
                 components.month = eventDay.month
                 components.day = eventDay.day
                 dateComponentsToReload.append(components)
+            }
+            
+            // Добавляем сегодняшний день, если он в видимом месяце
+            if isTodayInVisibleMonth, let todayDay = todayComponents.day {
+                var todayComponentsToReload = DateComponents()
+                todayComponentsToReload.year = visibleYear
+                todayComponentsToReload.month = visibleMonth
+                todayComponentsToReload.day = todayDay
+                dateComponentsToReload.append(todayComponentsToReload)
             }
             
             if !dateComponentsToReload.isEmpty {
@@ -341,7 +368,10 @@ struct iOSCalendarView: UIViewRepresentable {
             }
             
             // Проверяем, есть ли событие в этот день и месяц (любой год)
-            if eventDays.contains(EventDate(month: month, day: day)) {
+            let hasEvent = eventDays.contains(EventDate(month: month, day: day))
+            
+            if hasEvent {
+                // День с событием - используем акцентный цвет с маленьким размером
                 return UICalendarView.Decoration.default(color: accentUIColor, size: .small)
             }
             
@@ -362,12 +392,19 @@ struct iOSCalendarView: UIViewRepresentable {
         func dateSelection(_ selection: UICalendarSelectionSingleDate, canSelectDate dateComponents: DateComponents?) -> Bool {
             guard let components = dateComponents,
                   let month = components.month,
-                  let day = components.day else {
+                  let day = components.day,
+                  let year = components.year else {
                 return false
             }
             
-            // Разрешаем выбор только дней с событиями
-            return eventDays.contains(EventDate(month: month, day: day))
+            // Проверяем, является ли выбранный день сегодняшним
+            let calendar = Calendar.current
+            let today = Date()
+            let todayComponents = calendar.dateComponents([.year, .month, .day], from: today)
+            let isToday = year == todayComponents.year && month == todayComponents.month && day == todayComponents.day
+            
+            // Разрешаем выбор дней с событиями или сегодняшнего дня
+            return eventDays.contains(EventDate(month: month, day: day)) || isToday
         }
     }
 }

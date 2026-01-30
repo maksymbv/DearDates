@@ -7,10 +7,12 @@
 
 import SwiftUI
 import SwiftData
+import UIKit
 
 struct AddEditGiftView: View {
     @Environment(\.dismiss) var dismiss
     @Environment(\.modelContext) var modelContext
+    @Environment(\.scenePhase) var scenePhase
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject var dataManager: DataManager
     @EnvironmentObject var localizationManager: LocalizationManager
@@ -24,6 +26,8 @@ struct AddEditGiftView: View {
     @State private var fullText: String = ""
     @State private var selectedEventId: UUID? = nil
     @State private var showingDeleteAlert = false
+    @State private var showingEventPicker = false
+    @State private var skipAutoSave = false
     
     private var profileEvents: [CustomEvent] {
         allEvents.filter { $0.profileId == profileId }
@@ -51,13 +55,12 @@ struct AddEditGiftView: View {
     }
     
     var body: some View {
-        NavigationView {
-            ZStack {
-                // Адаптивный фон
-                Color(.systemGroupedBackground)
-                    .ignoresSafeArea()
-                
-                VStack(spacing: 0) {
+        ZStack {
+            // Адаптивный фон
+            Color(.systemGroupedBackground)
+                .ignoresSafeArea()
+            
+            VStack(spacing: 0) {
                     if isGiven {
                         // Режим просмотра (для подаренных подарков)
                         ScrollView {
@@ -99,12 +102,6 @@ struct AddEditGiftView: View {
                 .navigationTitle(gift == nil ? "navigation.new_gift".localized : (isGiven ? "navigation.gift".localized : "navigation.edit_gift".localized))
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
-                    ToolbarItem(placement: .navigationBarLeading) {
-                        Button(action: { dismiss() }) {
-                            Image(systemName: "xmark")
-                        }
-                    }
-                    
                     ToolbarItemGroup(placement: .navigationBarTrailing) {
                         // Меню действий (для всех существующих подарков)
                         if gift != nil {
@@ -116,13 +113,6 @@ struct AddEditGiftView: View {
                                 Image(systemName: "ellipsis.circle")
                             }
                         }
-                        
-                        if !isGiven {
-                            Button(action: { saveGift() }) {
-                                Image(systemName: "checkmark")
-                            }
-                            .disabled(fullText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                        }
                     }
                 }
                 .safeAreaInset(edge: .bottom) {
@@ -132,6 +122,7 @@ struct AddEditGiftView: View {
                     }
                 }
                 .onAppear {
+                    TabBarHelper.hideTabBar()
                     if let gift = gift {
                         // Объединяем title и description в один текст
                         if gift.notes.isEmpty {
@@ -142,6 +133,15 @@ struct AddEditGiftView: View {
                         selectedEventId = gift.eventId
                     }
                 }
+                .onDisappear {
+                    // Таб-бар не показываем: возврат в профиль, показ при уходе с профиля
+                    if !skipAutoSave { commitGiftIfNeeded() }
+                }
+                .onChange(of: scenePhase) { _, newPhase in
+                    if newPhase == .background, !isGiven, !skipAutoSave {
+                        commitGiftIfNeeded()
+                    }
+                }
                 .alert("message.delete_gift_confirm".localized, isPresented: $showingDeleteAlert) {
                     Button("button.cancel".localized, role: .cancel) { }
                     Button("button.delete".localized, role: .destructive) {
@@ -150,12 +150,24 @@ struct AddEditGiftView: View {
                 } message: {
                     Text("message.delete_gift_description".localized)
                 }
-            }
-            .tint(settingsManager.accentColor.color)
+                .sheet(isPresented: $showingEventPicker) {
+                    eventPickerSheet
+                }
         }
+        .ignoresSafeArea(edges: .bottom) // Таб-бар скрыт — не резервировать под него место
+        // Акцент только в футере и sheet выбора события; кнопки (три точки и т.д.) — системный цвет
     }
     
-    private func saveGift() {
+    /// Безопасное автосохранение при уходе с экрана: сохраняет только при непустом тексте.
+    /// Пустую новую идею не создаёт; существующую идею, очищенную до пустоты, удаляет.
+    private func commitGiftIfNeeded() {
+        let trimmed = fullText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            if let existingGift = gift {
+                dataManager.deleteGift(existingGift, context: modelContext)
+            }
+            return
+        }
         let lines = fullText.components(separatedBy: .newlines)
         let giftTitle = lines.first?.trimmingCharacters(in: .whitespaces) ?? ""
         let giftDescription: String
@@ -164,7 +176,7 @@ struct AddEditGiftView: View {
         } else {
             giftDescription = ""
         }
-        
+        if giftTitle.isEmpty { return }
         if let existingGift = gift {
             existingGift.title = giftTitle
             existingGift.notes = giftDescription
@@ -179,17 +191,16 @@ struct AddEditGiftView: View {
             )
             dataManager.addGift(newGift, context: modelContext)
         }
-        
-        dismiss()
     }
     
     private func deleteGift() {
         guard let gift = gift else { return }
+        skipAutoSave = true
         dataManager.deleteGift(gift, context: modelContext)
         dismiss()
     }
     
-    // MARK: - Event Selection Footer
+    // MARK: - Event Selection Footer (без Menu — избегаем _UIReparentingView)
     
     private var eventSelectionFooter: some View {
         HStack {
@@ -199,31 +210,7 @@ struct AddEditGiftView: View {
             
             Spacer()
             
-            Menu {
-                Button(action: {
-                    selectedEventId = nil
-                }) {
-                    HStack {
-                        Text("label.not_selected".localized)
-                        if selectedEventId == nil {
-                            Image(systemName: "checkmark")
-                        }
-                    }
-                }
-                
-                ForEach(profileEvents, id: \.id) { event in
-                    Button(action: {
-                        selectedEventId = event.id
-                    }) {
-                        HStack {
-                            Text(event.name)
-                            if selectedEventId == event.id {
-                                Image(systemName: "checkmark")
-                            }
-                        }
-                    }
-                }
-            } label: {
+            Button(action: { showingEventPicker = true }) {
                 HStack(spacing: 4) {
                     if let selectedEventId = selectedEventId,
                        let selectedEvent = profileEvents.first(where: { $0.id == selectedEventId }) {
@@ -240,12 +227,73 @@ struct AddEditGiftView: View {
                         .foregroundColor(settingsManager.accentColor.color)
                 }
             }
+            .buttonStyle(.plain)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
+        .padding(.bottom, 24) // Отступ под home indicator (таб-бар скрыт)
         .background(
             Color(.systemBackground)
         )
+    }
+    
+    private var eventPickerSheet: some View {
+        NavigationStack {
+            List {
+                Button(action: {
+                    selectedEventId = nil
+                    showingEventPicker = false
+                }) {
+                    HStack {
+                        Text("label.not_selected".localized)
+                        Spacer()
+                        if selectedEventId == nil {
+                            Image(systemName: "checkmark")
+                                .foregroundColor(settingsManager.accentColor.color)
+                        }
+                    }
+                }
+                .foregroundColor(.primary)
+                .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
+                .listRowBackground(Color.clear)
+                
+                ForEach(profileEvents, id: \.id) { event in
+                    Button(action: {
+                        selectedEventId = event.id
+                        showingEventPicker = false
+                    }) {
+                        HStack {
+                            Text(event.name)
+                            Spacer()
+                            if selectedEventId == event.id {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(settingsManager.accentColor.color)
+                            }
+                        }
+                    }
+                    .foregroundColor(.primary)
+                    .listRowInsets(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
+                    .listRowBackground(Color.clear)
+                }
+            }
+            .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .contentMargins(.top, 0, for: .scrollContent)
+            .contentMargins(.horizontal, 0, for: .scrollContent)
+            .navigationTitle("section.add_to_event".localized)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("button.cancel".localized) {
+                        showingEventPicker = false
+                    }
+                    .tint(settingsManager.accentColor.color)
+                }
+            }
+        }
+        .presentationDetents([.height(340)])
+        .presentationDragIndicator(.visible)
+        .tint(settingsManager.accentColor.color)
     }
 }
 

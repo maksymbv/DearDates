@@ -10,27 +10,33 @@ import SwiftData
 
 @Model
 final class Profile: Identifiable {
-    @Attribute(.unique) var id: UUID
-    var name: String
+    var id: UUID = UUID() // Дефолтное значение для CloudKit
+    var name: String = "" // Дефолтное значение для CloudKit
     var photoPath: String?
-    var notes: String
-    var notificationsEnabled: Bool
-    @Attribute var _reminderDays: [Int]? // Внутреннее хранилище (опциональное для совместимости с миграцией)
-    var avatarColorHue: Double
-    var isFavorite: Bool
-    var createdAt: Date
-    var updatedAt: Date
+    var notes: String = "" // Дефолтное значение для CloudKit
+    var notificationsEnabled: Bool = true // Дефолтное значение для CloudKit
+    var _reminderDaysData: String = "7,1" // Храним как строку для совместимости с CoreData
+    var avatarColorHue: Double = 0.0 // Дефолтное значение для CloudKit
+    var isPinned: Bool = false // Дефолтное значение для CloudKit
+    var createdAt: Date = Date() // Дефолтное значение для CloudKit
+    var updatedAt: Date = Date() // Дефолтное значение для CloudKit
     
-    @Relationship(deleteRule: .cascade) var gifts: [Gift]?
-    @Relationship(deleteRule: .cascade) var customEvents: [CustomEvent]?
+    @Relationship(deleteRule: .cascade, inverse: \Gift.profile) var gifts: [Gift]? = [] // Опциональный для CloudKit
+    @Relationship(deleteRule: .cascade, inverse: \CustomEvent.profile) var customEvents: [CustomEvent]? = [] // Опциональный для CloudKit
     
-    // Computed property для обратной совместимости - всегда возвращает неопциональное значение
+    // Computed property для обратной совместимости
     var reminderDays: [Int] {
         get {
-            return _reminderDays ?? [7, 1]
+            // Пытаемся распарсить строку
+            let components = _reminderDaysData.split(separator: ",").compactMap { Int($0.trimmingCharacters(in: .whitespaces)) }
+            if !components.isEmpty {
+                return components
+            }
+            // Если строка пустая или невалидная, возвращаем дефолт
+            return [7, 1]
         }
         set {
-            _reminderDays = newValue
+            _reminderDaysData = newValue.isEmpty ? "7,1" : newValue.map { String($0) }.joined(separator: ",")
         }
     }
     
@@ -41,7 +47,7 @@ final class Profile: Identifiable {
          notificationsEnabled: Bool = true,
          reminderDays: [Int]? = [7, 1],
          avatarColorHue: Double? = nil,
-         isFavorite: Bool = false,
+         isPinned: Bool = false,
          createdAt: Date = Date(),
          updatedAt: Date = Date()) {
         self.id = id
@@ -49,8 +55,9 @@ final class Profile: Identifiable {
         self.photoPath = photoPath
         self.notes = notes
         self.notificationsEnabled = notificationsEnabled
-        self._reminderDays = reminderDays ?? [7, 1] // Дефолтное значение для совместимости
-        self.isFavorite = isFavorite
+        let days = reminderDays ?? [7, 1]
+        self._reminderDaysData = days.isEmpty ? "7,1" : days.map { String($0) }.joined(separator: ",")
+        self.isPinned = isPinned
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         
@@ -76,7 +83,7 @@ struct ProfileCodable: Codable {
     var notificationsEnabled: Bool
     var reminderDays: [Int]
     var avatarColorHue: Double
-    var isFavorite: Bool
+    var isPinned: Bool
     var createdAt: Date
     var updatedAt: Date
 }
@@ -91,7 +98,7 @@ extension Profile {
             notificationsEnabled: notificationsEnabled,
             reminderDays: reminderDays,
             avatarColorHue: avatarColorHue,
-            isFavorite: isFavorite,
+            isPinned: isPinned,
             createdAt: createdAt,
             updatedAt: updatedAt
         )
@@ -116,7 +123,7 @@ extension Profile {
             notificationsEnabled: codable.notificationsEnabled,
             reminderDays: codable.reminderDays,
             avatarColorHue: safeHue,
-            isFavorite: codable.isFavorite,
+            isPinned: codable.isPinned,
             createdAt: codable.createdAt,
             updatedAt: codable.updatedAt
         )

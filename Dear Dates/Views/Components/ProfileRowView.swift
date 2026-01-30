@@ -106,12 +106,13 @@ struct ProfileRowView: View {
             .font(.headline)
             .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             
-            // Звездочка рядом с именем
-            if profile.isFavorite {
-                Image(systemName: "star.fill")
+            // Иконка булавки для закрепленных профилей
+            if profile.isPinned {
+                Image(systemName: "pin.fill")
                     .font(.caption)
                     .foregroundColor(accentColor)
-                    .accessibilityLabel("accessibility.favorite".localized)
+                    .transition(.scale.combined(with: .opacity))
+                    .accessibilityLabel("accessibility.pinned_profile".localized)
             }
         }
     }
@@ -200,9 +201,9 @@ extension ProfileRowView: Equatable {
     static func == (lhs: ProfileRowView, rhs: ProfileRowView) -> Bool {
         lhs.profile.id == rhs.profile.id &&
         lhs.profile.name == rhs.profile.name &&
-        lhs.profile.isFavorite == rhs.profile.isFavorite &&
         lhs.profile.photoPath == rhs.profile.photoPath &&
         lhs.profile.notes == rhs.profile.notes &&
+        lhs.profile.isPinned == rhs.profile.isPinned &&
         lhs.searchText == rhs.searchText
     }
 }
