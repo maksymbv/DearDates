@@ -25,6 +25,4 @@ Search by names or notes. Remember someone wanted “LEGO” but forgot who? Jus
 **Privacy first**  
 No data collection. Everything stays on your device and can optionally sync via iCloud.
 
-![All dates at your fingertips](app_image/deardates1.webp) ![Remember important things](app_image/deardates2.webp) 
-![Convenient calendar](app_image/deardates3.webp) ![Instant search](app_image/deardates4.webp) 
-![Gift ideas](app_image/deardates5.webp)
+![All dates at your fingertips](app_image/app_image.png)
