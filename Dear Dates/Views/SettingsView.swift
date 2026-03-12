@@ -54,14 +54,14 @@ struct SettingsView: View {
             MailView(
                 subject: "settings.support_email_subject".localized,
                 messageBody: viewModel.getEmailTemplate(),
-                toRecipients: ["max.qb@icloud.com"]
+                toRecipients: ["maksymbv@icloud.com"]
             )
         }
         .sheet(isPresented: $viewModel.showingFeatureRequest) {
             MailView(
                 subject: "settings.request_feature_subject".localized,
                 messageBody: viewModel.getEmailTemplate(),
-                toRecipients: ["max.qb@icloud.com"]
+                toRecipients: ["maksymbv@icloud.com"]
             )
         }
         .sheet(isPresented: $viewModel.showingExportSheet) {

@@ -62,7 +62,7 @@ class SettingsViewModel: ObservableObject {
     
     private func openMailtoLink(subject: String) {
         let encodedSubject = subject.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? ""
-        if let url = URL(string: "mailto:max.qb@icloud.com?subject=\(encodedSubject)") {
+        if let url = URL(string: "mailto:maksymbv@icloud.com?subject=\(encodedSubject)") {
             UIApplication.shared.open(url)
         }
     }
@@ -73,7 +73,7 @@ class SettingsViewModel: ObservableObject {
         if let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String {
             return version
         }
-        return "2.0.0"
+        return "2.0"
     }
     
     func getEmailTemplate() -> String {
